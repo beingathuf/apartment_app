@@ -1,7 +1,5 @@
 {
-  "name": "my-app",
-  "integrations": {
-    "capacitor": {}
-  },
-  "type": "react-vite"
+  "name": "New Ionic App",
+  "integrations": {},
+  "type": "react"
 }

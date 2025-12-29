@@ -1,0 +1,427 @@
+/* src/pages/Watchman/Watchman.css */
+
+/* Header Styles */
+.watchman-header {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.watchman-toolbar {
+  --background: linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%);
+  --border-color: rgba(0, 0, 0, 0.06);
+  --min-height: 70px;
+  padding: 0 20px;
+}
+
+.watchman-title {
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  color: #1f2937;
+  text-align: center;
+}
+
+.watchman-title .title-icon {
+  margin-right: 12px;
+  font-size: 24px;
+  color: #4f46e5;
+}
+
+/* Logout Button */
+.logout-button {
+   --color: #374151;
+  --background: transparent;
+  --background-hover: #f3f4f6;
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --border-radius: 10px;
+  width: 48px;
+  height: 48px;
+}
+
+.logout-button ion-icon {
+  font-size: 20px;
+}
+
+/* Content Styles */
+.watchman-content {
+  --background: linear-gradient(
+    180deg,
+    #f5f7ff 0%,
+    #f3f4f6 40%,
+    #f9fafb 100%
+  );
+}
+
+
+.content-wrapper {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 24px;
+  width: 100%;
+}
+
+/* Welcome Section */
+.welcome-section {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.welcome-icon {
+  width: 64px;
+  height: 64px;
+  background: #3b82f6;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.welcome-icon ion-icon {
+  font-size: 28px;
+  color: white;
+}
+
+.welcome-title {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.welcome-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* Verification Card */
+.verification-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 24px;
+}
+
+.verification-header {
+  padding: 24px 24px 0;
+}
+
+.verification-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.verification-subtitle {
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* Input Section */
+.input-section {
+  padding: 0 24px;
+}
+
+.input-item {
+  --border-color: #e5e7eb;
+  --border-radius: 12px;
+  --background: #f9fafb;
+  --highlight-color-focused: #3b82f6;
+  margin-bottom: 20px;
+}
+
+.code-input {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+
+.action-buttons {
+  padding: 0 24px 24px;
+}
+
+.verify-button {
+  --background: #3b82f6;
+  --background-activated: #2563eb;
+  --border-radius: 12px;
+  height: 48px;
+  font-weight: 500;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.scan-button {
+  --background: #ffffff;
+  --background-activated: #f3f4f6;
+  --color: #3b82f6;
+  --border-color: #d1d5db;
+  --border-width: 1px;
+  --border-style: solid;
+  --border-radius: 12px;
+  height: 48px;
+  font-weight: 500;
+  font-size: 16px;
+}
+
+/* Result Card */
+.result-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+  margin-top: 24px;
+  backdrop-filter: blur(4px);
+}
+
+.result-status {
+  padding: 20px;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.result-status.valid {
+  background: #10b981;
+}
+
+.result-status.invalid {
+  background: #ef4444;
+}
+
+.status-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-icon ion-icon {
+  font-size: 20px;
+  color: white;
+}
+
+.status-text {
+  color: white;
+}
+
+.status-text h3 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.status-text p {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.pass-code {
+  background: white;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+/* Pass Details */
+.pass-details {
+  padding: 20px;
+}
+
+.details-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #111827;
+}
+
+.details-grid {
+  padding: 0;
+}
+
+.detail-item {
+  margin-bottom: 16px;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+  font-weight: 500;
+  display: block;
+}
+
+.detail-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  display: block;
+}
+
+.time-remaining {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.time-remaining.valid {
+  color: #10b981;
+}
+
+.time-remaining.invalid {
+  color: #ef4444;
+}
+
+.time-remaining ion-icon {
+  font-size: 14px;
+}
+
+/* Clear Button */
+.clear-section {
+  padding: 0 20px 20px;
+}
+
+.clear-button {
+  --background: #f3f4f6;
+  --background-activated: #e5e7eb;
+  --color: #374151;
+  --border-radius: 12px;
+  height: 44px;
+  font-weight: 500;
+  font-size: 15px;
+}
+
+/* Loading State */
+.loading-container {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* FAB */
+.scan-fab {
+  bottom: 24px;
+  right: 24px;
+}
+
+.fab-button {
+  --background: #3b82f6;
+  --background-activated: #2563eb;
+  --box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  width: 56px;
+  height: 56px;
+}
+
+/* Toast */
+.watchman-toast {
+  --border-radius: 12px;
+  --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Alert */
+.logout-alert {
+  --border-radius: 16px;
+}
+
+.alert-button {
+  font-weight: 500;
+}
+
+.alert-button.logout {
+  --color: #dc2626;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .content-wrapper {
+    padding: 20px;
+  }
+  
+  .verification-header,
+  .input-section,
+  .action-buttons {
+    padding: 20px;
+  }
+  
+  .verification-card {
+    margin-bottom: 20px;
+  }
+  
+  .scan-fab {
+    bottom: 20px;
+    right: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .content-wrapper {
+    padding: 16px;
+  }
+  
+  .verification-header,
+  .input-section,
+  .action-buttons {
+    padding: 16px;
+  }
+  
+  .verification-title {
+    font-size: 17px;
+  }
+  
+  .verify-button,
+  .scan-button {
+    height: 44px;
+    font-size: 15px;
+  }
+  
+  .fab-button {
+    width: 52px;
+    height: 52px;
+  }
+  
+  .watchman-toolbar {
+    padding: 0 16px;
+  }
+}
