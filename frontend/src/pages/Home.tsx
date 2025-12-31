@@ -1,14 +1,10 @@
-// src/pages/Home.tsx - UPDATED (Resident bookings loading)
+// src/pages/Home.tsx
 import React, { useEffect, useRef, useState } from "react";
 import {
   IonPage,
   IonHeader,
   IonToolbar,
   IonContent,
-  IonList,
-  IonItem,
-  IonLabel,
-  IonToast,
   IonBadge,
   IonChip,
   IonGrid,
@@ -19,6 +15,7 @@ import {
   IonItemOption,
   IonIcon,
   IonButton,
+  IonToast,
 } from "@ionic/react";
 import {
   trashOutline,
@@ -30,6 +27,7 @@ import {
   eyeOutline,
   calendarOutline,
   megaphoneOutline,
+  checkmarkCircleOutline,
 } from "ionicons/icons";
 import VisitorPassModal from "../components/VisitorPassModal";
 import AmenitiesBookingModal from "../components/AmenitiesBookingModal";
@@ -38,21 +36,17 @@ import PassViewerModal from "../components/PassViewerModal";
 import api from "../api";
 
 /* ---------------- helpers ---------------- */
-// Fixed: Always use UTC for calculations
 function isExpired(expiryISO: string | null): boolean {
   if (!expiryISO) return false;
-
   const now = new Date();
   const expiry = new Date(expiryISO);
-
-  // Compare in UTC - this is the key fix
   return expiry.getTime() <= now.getTime();
 }
 
 function getTimeRemaining(expiryISO: string | null) {
   if (!expiryISO) return { expired: true, minutes: 0, seconds: 0 };
-  const now = Date.now(); // UTC timestamp
-  const expiry = new Date(expiryISO).getTime(); // UTC timestamp
+  const now = Date.now();
+  const expiry = new Date(expiryISO).getTime();
   const diff = expiry - now;
   if (diff <= 0) return { expired: true, minutes: 0, seconds: 0 };
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -78,7 +72,6 @@ function getCountdownColor(expiresAt: string | null) {
   return "success";
 }
 
-// Format IST time for display only (not for calculations)
 function formatIST(dateString: string | null): string {
   if (!dateString) return "-";
   try {
@@ -89,6 +82,22 @@ function formatIST(dateString: string | null): string {
       hour: "numeric",
       minute: "2-digit",
       second: "2-digit",
+    });
+  } catch {
+    return "-";
+  }
+}
+
+function formatShortDate(dateString: string | null): string {
+  if (!dateString) return "-";
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   } catch {
     return "-";
@@ -110,7 +119,7 @@ interface VisitorPass {
   createdAt: string;
   expiresAt: string | null;
   status: string;
-  raw?: any;
+  verifiedAt?: string | null;
 }
 
 interface Booking {
@@ -119,11 +128,12 @@ interface Booking {
   slot: string;
   amenity: string;
   createdAt: string;
-  status?: string; // Add status field
-  start_time?: string; // Add start_time field
-  end_time?: string; // Add end_time field
-  guests?: number; // Add guests field
-  unit_number?: string; // Add unit_number field
+  status?: string;
+  start_time?: string;
+  end_time?: string;
+  guests?: number;
+  unit_number?: string;
+  rejection_reason?: string | null;
 }
 
 interface Complaint {
@@ -131,6 +141,9 @@ interface Complaint {
   type: string;
   description: string;
   createdAt: string;
+  status: string;
+  admin_response: string | null;
+  resolved_at: string | null;
 }
 
 interface HomePageProps {
@@ -138,27 +151,19 @@ interface HomePageProps {
 }
 
 export default function HomePage({ history }: HomePageProps) {
-  // modals
-  const [visitorPassModalOpen, setVisitorPassModalOpen] =
-    useState<boolean>(false);
-  const [bookingModalOpen, setBookingModalOpen] = useState<boolean>(false);
-  const [complaintModalOpen, setComplaintModalOpen] = useState<boolean>(false);
-  const [passViewerModalOpen, setPassViewerModalOpen] =
-    useState<boolean>(false);
-
-  // data from server
+  const [visitorPassModalOpen, setVisitorPassModalOpen] = useState(false);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [complaintModalOpen, setComplaintModalOpen] = useState(false);
+  const [passViewerModalOpen, setPassViewerModalOpen] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [visitorPasses, setVisitorPasses] = useState<VisitorPass[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
-
-  // ui
   const [toast, setToast] = useState<ToastState>({ show: false, msg: "" });
   const [selectedPass, setSelectedPass] = useState<VisitorPass | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Get building ID
   function getBuildingId(): number | null {
     try {
       const rawUser = localStorage.getItem("user");
@@ -167,38 +172,32 @@ export default function HomePage({ history }: HomePageProps) {
         return parsed.buildingId ?? parsed.building_id ?? null;
       }
       return null;
-    } catch (e) {
+    } catch {
       return null;
     }
   }
 
   const buildingId = getBuildingId();
 
-  // Normalize pass data - FIXED to ensure UTC handling (Moved inside component)
   const normalizePass = (p: any): VisitorPass | null => {
     if (!p) return null;
 
     const id = p.id ?? p.pass_id ?? p.passId ?? `temp_${Date.now()}`;
-
-    // Ensure expiresAt is ISO string in UTC
     let expiresAt =
       p.expires_at ?? p.expiresAt ?? p.expires ?? p.expiry ?? null;
     if (expiresAt) {
       try {
         const date = new Date(expiresAt);
         if (!isNaN(date.getTime())) {
-          expiresAt = date.toISOString(); // Ensure UTC ISO string
+          expiresAt = date.toISOString();
         } else {
-          console.warn("Invalid expiry date:", expiresAt);
           expiresAt = null;
         }
-      } catch (e) {
-        console.warn("Error parsing expiry date:", e);
+      } catch {
         expiresAt = null;
       }
     }
 
-    // Ensure createdAt is also ISO string
     let createdAt = p.created_at ?? p.createdAt ?? new Date().toISOString();
     try {
       const date = new Date(createdAt);
@@ -209,6 +208,26 @@ export default function HomePage({ history }: HomePageProps) {
       // Keep as is
     }
 
+    let verifiedAt = p.verified_at ?? p.verifiedAt ?? null;
+    if (verifiedAt) {
+      try {
+        const date = new Date(verifiedAt);
+        if (!isNaN(date.getTime())) {
+          verifiedAt = date.toISOString();
+        } else {
+          verifiedAt = null;
+        }
+      } catch {
+        verifiedAt = null;
+      }
+    }
+
+    // Determine status - prioritize verified status
+    let status = p.status ?? "active";
+    if (verifiedAt && status === "active") {
+      status = "verified";
+    }
+
     return {
       id: id,
       buildingId: p.building_id ?? p.buildingId ?? buildingId,
@@ -217,14 +236,13 @@ export default function HomePage({ history }: HomePageProps) {
       visitorName:
         p.visitor_name ?? p.visitorName ?? p.name ?? p.visitor ?? "Visitor",
       qrDataUrl: p.qr_data ?? p.qrDataUrl ?? p.qr ?? p.qrcode ?? null,
-      createdAt: createdAt,
-      expiresAt: expiresAt,
+      createdAt,
+      expiresAt,
       status: p.status ?? "active",
-      raw: p,
+      verifiedAt,
     };
   };
 
-  // Load all data
   async function loadAll() {
     if (!buildingId) {
       setToast({
@@ -239,13 +257,11 @@ export default function HomePage({ history }: HomePageProps) {
       const [passesResp, bookingsResp, complaintsResp] =
         await Promise.allSettled([
           api.get(`/buildings/${buildingId}/visitor-passes`),
-          api.get(`/bookings/my`), // FIXED: Changed from admin endpoint to resident endpoint
+          api.get(`/bookings/my`),
           api.get(`/buildings/${buildingId}/complaints`),
         ]);
 
-      /* ---------------- visitor passes ---------------- */
       if (passesResp.status === "fulfilled") {
-        // Extract the real payload (support axios-style response and raw)
         const data = passesResp.value?.data ?? passesResp.value;
         let passesArray: any[] = [];
 
@@ -256,59 +272,35 @@ export default function HomePage({ history }: HomePageProps) {
         } else if (Array.isArray(data?.visitor_passes)) {
           passesArray = data.visitor_passes;
         } else if (Array.isArray(data?.data)) {
-          // sometimes nested under data.data
           passesArray = data.data;
-        } else if (
-          data &&
-          typeof data === "object" &&
-          Object.keys(data).length === 0
-        ) {
-          passesArray = [];
-        } else if (
-          data &&
-          typeof data === "object" &&
-          data.passes == null &&
-          data.data == null
-        ) {
-          // If the server returned the array directly inside data (but wrapped oddly), try to pick the inner array
-          // e.g. response.data = { someKey: [...] } -> look for first array
+        } else if (data && typeof data === "object") {
           const firstArray = Object.values(data).find((v) => Array.isArray(v));
           if (firstArray) passesArray = firstArray as any[];
-          else passesArray = [];
-        } else {
-          passesArray = [];
         }
 
         const normalized = passesArray
           .map((p: any) => normalizePass(p))
           .filter(Boolean) as VisitorPass[];
 
+        // Debug log to see what statuses we're getting
         console.log(
-          "Loaded passes:",
+          "Loaded passes with statuses:",
           normalized.map((p) => ({
             id: p.id,
             code: p.code,
-            expiresAt: p.expiresAt,
             status: p.status,
+            verifiedAt: p.verifiedAt,
           }))
         );
 
-        // Auto-filter expired passes
-        const activePasses = normalized.filter(
-          (p) => p.status === "active" && !isExpired(p.expiresAt)
-        );
-
         setVisitorPasses(
-          activePasses.sort(
+          normalized.sort(
             (a, b) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )
         );
-      } else {
-        console.warn("Failed to load passes:", passesResp.reason);
       }
 
-      /* ---------------- bookings ---------------- */
       if (bookingsResp.status === "fulfilled") {
         const data = bookingsResp.value?.data ?? bookingsResp.value;
         let bookingsArray: any[] = [];
@@ -319,12 +311,8 @@ export default function HomePage({ history }: HomePageProps) {
           bookingsArray = data.bookings;
         } else if (Array.isArray(data?.data)) {
           bookingsArray = data.data;
-        } else {
-          // attempt to extract first array from response object
-          const firstArray =
-            data && typeof data === "object"
-              ? Object.values(data).find((v) => Array.isArray(v))
-              : null;
+        } else if (data && typeof data === "object") {
+          const firstArray = Object.values(data).find((v) => Array.isArray(v));
           bookingsArray = (firstArray as any[]) ?? [];
         }
 
@@ -349,31 +337,36 @@ export default function HomePage({ history }: HomePageProps) {
               new Date(x.date).getTime() - new Date(y.date).getTime()
           )
         );
-      } else {
-        console.warn("Failed to load bookings:", bookingsResp.reason);
       }
 
-      /* ---------------- complaints ---------------- */
       if (complaintsResp.status === "fulfilled") {
-        const data = complaintsResp.value?.data ?? complaintsResp.value;
-        let complaintsArray: any[] = [];
+        const response = complaintsResp.value;
+        let complaintsData;
 
-        if (Array.isArray(data)) complaintsArray = data;
-        else if (Array.isArray(data?.complaints))
-          complaintsArray = data.complaints;
-        else if (Array.isArray(data?.data)) complaintsArray = data.data;
-        else {
-          const firstArray =
-            data && typeof data === "object"
-              ? Object.values(data).find((v) => Array.isArray(v))
-              : null;
-          complaintsArray = (firstArray as any[]) ?? [];
+        // Handle different response structures
+        if (response?.data?.complaints) {
+          complaintsData = response.data.complaints;
+        } else if (Array.isArray(response?.data)) {
+          complaintsData = response.data;
+        } else if (Array.isArray(response?.complaints)) {
+          complaintsData = response.complaints;
+        } else if (response?.success && response?.complaints) {
+          complaintsData = response.complaints;
+        } else {
+          complaintsData = [];
         }
 
-        const normalized = complaintsArray.map((c: any) => ({
-          ...c,
+        // Debug log to see what we're getting
+        console.log("Complaints data:", complaintsData);
+
+        const normalized = complaintsData.map((c: any) => ({
           id: c.id ?? `c_${Date.now()}`,
+          type: c.type || "General",
+          description: c.description || "",
           createdAt: c.created_at ?? c.createdAt ?? new Date().toISOString(),
+          status: c.status || "submitted", // Make sure to get status
+          admin_response: c.admin_response || null, // Make sure to get admin_response
+          resolved_at: c.resolved_at || null,
         }));
 
         setComplaints(
@@ -391,16 +384,17 @@ export default function HomePage({ history }: HomePageProps) {
     }
   }
 
-  // Auto-cleanup expired passes
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       setVisitorPasses((prev) => {
-        const active = prev.filter(
-          (p) => p.status === "active" && !isExpired(p.expiresAt)
-        );
-        return active;
+        return prev.filter((p) => {
+          if (p.status === "active" && isExpired(p.expiresAt)) {
+            return false;
+          }
+          return true;
+        });
       });
-    }, 30000); // Check every 30 seconds
+    }, 30000);
 
     return () => clearInterval(cleanupInterval);
   }, []);
@@ -408,7 +402,6 @@ export default function HomePage({ history }: HomePageProps) {
   useEffect(() => {
     loadAll();
 
-    // Update countdown every second
     intervalRef.current = setInterval(() => {
       setVisitorPasses((prev) => [...prev]);
     }, 1000);
@@ -418,7 +411,6 @@ export default function HomePage({ history }: HomePageProps) {
     };
   }, [buildingId]);
 
-  /* ---------------- visitor pass (create) ---------------- */
   const handleVisitorPassCreated = async (visitorPass: any) => {
     if (!buildingId) {
       setToast({ show: true, msg: "No building selected" });
@@ -426,9 +418,7 @@ export default function HomePage({ history }: HomePageProps) {
     }
 
     try {
-      // Use the expiry from modal (should be 30 minutes from now)
       const expiresAt = visitorPass.expiresAt;
-
       const body = {
         code: visitorPass.code,
         visitorName: visitorPass.visitorName,
@@ -436,18 +426,12 @@ export default function HomePage({ history }: HomePageProps) {
         expiresAt,
       };
 
-      console.log("Creating pass:", {
-        ...body,
-        currentTime: new Date().toISOString(),
-      });
-
       const resp = await api.post(
         `/buildings/${buildingId}/visitor-passes`,
         body
       );
-
-      // Handle axios-style and raw responses:
       const respData = resp?.data ?? resp;
+
       if (respData && respData.pass) {
         const newPass = normalizePass(respData.pass);
         if (newPass) {
@@ -480,7 +464,6 @@ export default function HomePage({ history }: HomePageProps) {
           });
         }
 
-        // Refresh data
         setTimeout(() => {
           loadAll();
         }, 1000);
@@ -515,8 +498,7 @@ export default function HomePage({ history }: HomePageProps) {
         prev.filter((p) => String(p.id) !== String(id))
       );
       setToast({ show: true, msg: "Visitor pass cancelled" });
-    } catch (e) {
-      console.warn("Cancel pass failed", e);
+    } catch {
       setVisitorPasses((prev) =>
         prev.filter((p) => String(p.id) !== String(id))
       );
@@ -524,18 +506,13 @@ export default function HomePage({ history }: HomePageProps) {
     }
   };
 
-  /* ---------------- bookings ---------------- */
-  // In Home.tsx, update the handleBookingCreated function:
   const handleBookingCreated = async (booking: any) => {
-    console.log("handleBookingCreated called with:", booking);
-
     if (!buildingId) {
       setToast({ show: true, msg: "No building selected" });
       return false;
     }
 
     try {
-      // Ensure the booking data matches what backend expects
       const bookingData = {
         amenity_id: booking.amenity_id,
         date: booking.date,
@@ -543,11 +520,7 @@ export default function HomePage({ history }: HomePageProps) {
         purpose: booking.purpose || "",
       };
 
-      console.log("Sending booking data to API:", bookingData);
-
-      // Call the correct endpoint
       const response = await api.post("/bookings", bookingData);
-      console.log("API Response:", response);
 
       if (response.success) {
         setToast({
@@ -557,7 +530,6 @@ export default function HomePage({ history }: HomePageProps) {
             "Booking submitted successfully! Waiting for admin approval.",
         });
 
-        // Refresh bookings list
         await loadAll();
         return true;
       } else {
@@ -577,10 +549,7 @@ export default function HomePage({ history }: HomePageProps) {
         errorMsg = e.message;
       }
 
-      setToast({
-        show: true,
-        msg: errorMsg,
-      });
+      setToast({ show: true, msg: errorMsg });
       return false;
     } finally {
       setBookingModalOpen(false);
@@ -595,10 +564,7 @@ export default function HomePage({ history }: HomePageProps) {
       setToast({ show: true, msg: "Booking cancelled" });
     } catch (e: any) {
       console.error("cancel booking error", e);
-      setToast({
-        show: true,
-        msg: e?.message || "Failed to cancel booking",
-      });
+      setToast({ show: true, msg: e?.message || "Failed to cancel booking" });
     }
   };
 
@@ -614,21 +580,13 @@ export default function HomePage({ history }: HomePageProps) {
       });
       await loadAll();
       setToast({ show: true, msg: "Complaint submitted successfully!" });
-    } catch (e) {
-      console.error("create complaint error", e);
+    } catch {
       setToast({ show: true, msg: "Failed to submit complaint" });
     } finally {
       setComplaintModalOpen(false);
     }
   };
 
-  const deleteComplaint = async (id: string | number) => {
-    if (!confirm("Delete this complaint?")) return;
-    setComplaints((prev) => prev.filter((c) => String(c.id) !== String(id)));
-    setToast({ show: true, msg: "Complaint deleted" });
-  };
-
-  /* ---------------- derived lists ---------------- */
   const activeBookings = bookings.filter((b) => {
     try {
       if (!b.date) return false;
@@ -636,7 +594,6 @@ export default function HomePage({ history }: HomePageProps) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Only show approved or pending bookings for future dates
       const isFutureDate = d >= today;
       const isActiveStatus = b.status === "approved" || b.status === "pending";
 
@@ -646,10 +603,12 @@ export default function HomePage({ history }: HomePageProps) {
     }
   });
 
-  // Show only active and non-expired passes
-  const activeVisitorPasses = visitorPasses.filter(
-    (p) => p.status === "active" && !isExpired(p.expiresAt)
-  );
+  const activeVisitorPasses = visitorPasses.filter((p) => {
+    if (p.status === "verified") {
+      return true;
+    }
+    return p.status === "active" && !isExpired(p.expiresAt);
+  });
 
   const getAmenityIcon = (amenityName: string) => {
     if (!amenityName) return fitnessOutline;
@@ -671,13 +630,12 @@ export default function HomePage({ history }: HomePageProps) {
     }
   };
 
-  /* ---------------- render ---------------- */
   return (
     <IonPage>
       <IonHeader className="ion-no-border">
         <IonToolbar
           style={{
-            "--background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            "--background": "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
             "--border-width": "0",
             "--min-height": "70px",
           }}
@@ -686,7 +644,7 @@ export default function HomePage({ history }: HomePageProps) {
             style={{
               padding: "0 16px",
               display: "flex",
-              justifyContent: "space-between",
+              justifyContent: "center",
               alignItems: "center",
               height: "100%",
             }}
@@ -696,7 +654,7 @@ export default function HomePage({ history }: HomePageProps) {
                 style={{
                   fontWeight: 800,
                   fontSize: "20px",
-                  color: "white",
+                  color: "#1f2937",
                   letterSpacing: "-0.5px",
                 }}
               >
@@ -705,7 +663,7 @@ export default function HomePage({ history }: HomePageProps) {
               <div
                 style={{
                   fontSize: "12px",
-                  color: "rgba(255,255,255,0.8)",
+                  color: "#4b5563",
                   fontWeight: 500,
                   marginTop: "2px",
                 }}
@@ -713,23 +671,21 @@ export default function HomePage({ history }: HomePageProps) {
                 Secure Visitor Management
               </div>
             </div>
-            <IonBadge
-              color="light"
-              style={{
-                fontSize: "12px",
-                fontWeight: 700,
-                padding: "6px 12px",
-                borderRadius: "20px",
-                background: "rgba(255,255,255,0.2)",
-                backdropFilter: "blur(10px)",
-              }}
-            >
-              {activeVisitorPasses.length} Active
-            </IonBadge>
           </div>
         </IonToolbar>
       </IonHeader>
-      <IonContent fullscreen scrollY={true}>
+      <IonContent
+        fullscreen
+        scrollY={true}
+        style={{
+          "--background": `linear-gradient(
+            180deg,
+            #f5f7ff 0%,
+            #f3f4f6 40%,
+            #f9fafb 100%
+          )`,
+        }}
+      >
         <div
           style={{
             padding: "20px 16px 32px",
@@ -738,7 +694,6 @@ export default function HomePage({ history }: HomePageProps) {
             width: "100%",
           }}
         >
-          {/* Welcome Header */}
           <div style={{ marginBottom: "28px" }}>
             <div
               style={{
@@ -754,7 +709,7 @@ export default function HomePage({ history }: HomePageProps) {
                     fontWeight: 800,
                     fontSize: "28px",
                     background:
-                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      "linear-gradient(135deg, #94a3ff 0%, #cbd5e1 100%)",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     margin: "0 0 4px 0",
@@ -792,34 +747,20 @@ export default function HomePage({ history }: HomePageProps) {
                   })()}
                 </p>
               </div>
-              <div
-                style={{
-                  background:
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  width: "48px",
-                  height: "48px",
-                  borderRadius: "12px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "white",
-                  fontWeight: 700,
-                  fontSize: "18px",
-                  boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
-                }}
-              >
-                {activeVisitorPasses.length}
-              </div>
             </div>
           </div>
 
-          {/* Quick Actions Grid */}
           <IonGrid style={{ padding: 0, marginBottom: "32px" }}>
             <IonRow>
               <IonCol size="4">
                 <div
                   onClick={() => setVisitorPassModalOpen(true)}
-                  style={cardStyle}
+                  style={{
+                    ...cardStyle,
+                    background:
+                      "linear-gradient(135deg, #c9d6ff 0%, #b8c8ff 100%)",
+                    boxShadow: "0 10px 40px rgba(148, 163, 255, 0.15)",
+                  }}
                 >
                   <div style={cardInnerStyle}>
                     <div
@@ -831,7 +772,7 @@ export default function HomePage({ history }: HomePageProps) {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "white",
+                        color: "#1f2937",
                         fontSize: "24px",
                         marginBottom: "12px",
                       }}
@@ -843,7 +784,7 @@ export default function HomePage({ history }: HomePageProps) {
                         style={{
                           fontSize: "14px",
                           fontWeight: 700,
-                          color: "white",
+                          color: "#1f2937",
                           marginBottom: "2px",
                         }}
                       >
@@ -852,7 +793,7 @@ export default function HomePage({ history }: HomePageProps) {
                       <div
                         style={{
                           fontSize: "11px",
-                          color: "rgba(255,255,255,0.8)",
+                          color: "#1f2937",
                           fontWeight: 500,
                         }}
                       >
@@ -868,7 +809,8 @@ export default function HomePage({ history }: HomePageProps) {
                   style={{
                     ...cardStyle,
                     background:
-                      "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                      "linear-gradient(135deg, #d6e4ff 0%, #c9d6ff 100%)",
+                    boxShadow: "0 10px 40px rgba(102, 126, 234, 0.15)",
                   }}
                 >
                   <div style={cardInnerStyle}>
@@ -881,7 +823,7 @@ export default function HomePage({ history }: HomePageProps) {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "white",
+                        color: "#1f2937",
                         fontSize: "24px",
                         marginBottom: "12px",
                       }}
@@ -893,7 +835,7 @@ export default function HomePage({ history }: HomePageProps) {
                         style={{
                           fontSize: "14px",
                           fontWeight: 700,
-                          color: "white",
+                          color: "#1f2937",
                           marginBottom: "2px",
                         }}
                       >
@@ -902,7 +844,7 @@ export default function HomePage({ history }: HomePageProps) {
                       <div
                         style={{
                           fontSize: "11px",
-                          color: "rgba(255,255,255,0.8)",
+                          color: "#1f2937",
                           fontWeight: 500,
                         }}
                       >
@@ -918,7 +860,8 @@ export default function HomePage({ history }: HomePageProps) {
                   style={{
                     ...cardStyle,
                     background:
-                      "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+                      "linear-gradient(135deg, #e2e8ff 0%, #d6e4ff 100%)",
+                    boxShadow: "0 10px 40px rgba(79, 70, 229, 0.15)",
                   }}
                 >
                   <div style={cardInnerStyle}>
@@ -931,7 +874,7 @@ export default function HomePage({ history }: HomePageProps) {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "white",
+                        color: "#1f2937",
                         fontSize: "24px",
                         marginBottom: "12px",
                       }}
@@ -943,7 +886,7 @@ export default function HomePage({ history }: HomePageProps) {
                         style={{
                           fontSize: "14px",
                           fontWeight: 700,
-                          color: "white",
+                          color: "#1f2937",
                           marginBottom: "2px",
                         }}
                       >
@@ -952,7 +895,7 @@ export default function HomePage({ history }: HomePageProps) {
                       <div
                         style={{
                           fontSize: "11px",
-                          color: "rgba(255,255,255,0.8)",
+                          color: "#1f2937",
                           fontWeight: 500,
                         }}
                       >
@@ -965,7 +908,6 @@ export default function HomePage({ history }: HomePageProps) {
             </IonRow>
           </IonGrid>
 
-          {/* Active Visitor Passes Section */}
           <div style={{ marginBottom: "32px" }}>
             <div
               style={{
@@ -976,11 +918,7 @@ export default function HomePage({ history }: HomePageProps) {
               }}
             >
               <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
               >
                 <div
                   style={{
@@ -988,11 +926,11 @@ export default function HomePage({ history }: HomePageProps) {
                     height: "32px",
                     borderRadius: "8px",
                     background:
-                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+                    color: "#1f2937",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "white",
                   }}
                 >
                   <IonIcon icon={personOutline} style={{ fontSize: "18px" }} />
@@ -1037,84 +975,105 @@ export default function HomePage({ history }: HomePageProps) {
                 {activeVisitorPasses.map((pass) => {
                   const countdownColor = getCountdownColor(pass.expiresAt);
                   const timeLeft = formatCountdown(pass.expiresAt);
+                  const isVerified = pass.status === "verified";
+                  const isExpiredPass = isExpired(pass.expiresAt);
 
                   return (
                     <IonItemSliding key={pass.id}>
-                      <IonItem
+                      <div
                         style={{
                           ...itemStyle,
-                          "--background": "white",
-                          "--padding-start": "0",
-                          "--inner-padding-end": "0",
+                          background: isVerified ? "#f0f9ff" : "white",
+                          padding: "16px",
+                          cursor: "pointer",
+                          borderLeft: isVerified
+                            ? "4px solid #10b981"
+                            : "4px solid transparent",
                         }}
-                        button
-                        detail={false}
                         onClick={() => openPassViewer(pass)}
                       >
                         <div
                           style={{
-                            width: "100%",
-                            padding: "16px",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: "16px",
                           }}
                         >
                           <div
                             style={{
                               display: "flex",
-                              justifyContent: "space-between",
                               alignItems: "center",
-                              gap: "16px",
+                              gap: "14px",
+                              flex: 1,
                             }}
                           >
                             <div
                               style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "14px",
-                                flex: 1,
+                                ...avatarStyle,
+                                background: isVerified
+                                  ? "rgba(16, 185, 129, 0.1)"
+                                  : "rgba(102, 126, 234, 0.1)",
                               }}
                             >
-                              <div style={avatarStyle}>
-                                <IonIcon
-                                  icon={personOutline}
-                                  style={{ color: "#667eea", fontSize: "20px" }}
-                                />
+                              <IonIcon
+                                icon={
+                                  isVerified
+                                    ? checkmarkCircleOutline
+                                    : personOutline
+                                }
+                                style={{
+                                  color: isVerified ? "#10b981" : "#4f46e5",
+                                }}
+                              />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div
+                                style={{
+                                  fontWeight: 700,
+                                  fontSize: "15px",
+                                  color: "#1f2937",
+                                  marginBottom: "4px",
+                                }}
+                              >
+                                {pass.visitorName}
+                                {isVerified && (
+                                  <IonBadge
+                                    color="success"
+                                    style={{
+                                      fontSize: "10px",
+                                      marginLeft: "8px",
+                                      padding: "2px 6px",
+                                    }}
+                                  >
+                                    VERIFIED
+                                  </IonBadge>
+                                )}
                               </div>
-                              <div style={{ flex: 1 }}>
-                                <div
-                                  style={{
-                                    fontWeight: 700,
-                                    fontSize: "15px",
-                                    color: "#1f2937",
-                                    marginBottom: "4px",
-                                  }}
-                                >
-                                  {pass.visitorName}
-                                </div>
-                                <div
-                                  style={{
-                                    color: "#6b7280",
-                                    fontSize: "12px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                  }}
-                                >
-                                  <span>
-                                    Code: <strong>{pass.code}</strong>
-                                  </span>
-                                  <span style={{ margin: "0 4px" }}>•</span>
-                                  <span>
-                                    Expires: {formatIST(pass.expiresAt)}
-                                  </span>
-                                </div>
+                              <div
+                                style={{
+                                  color: "#6b7280",
+                                  fontSize: "12px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <span>
+                                  Code: <strong>{pass.code}</strong>
+                                </span>
+                                <span style={{ margin: "0 4px" }}>•</span>
+                                <span>
+                                  {isExpiredPass ? "Expired: " : "Expires: "}
+                                  {formatIST(pass.expiresAt)}
+                                </span>
                               </div>
                             </div>
-
+                          </div>
+                          {!isVerified && !isExpiredPass && (
                             <div
-                              style={{
-                                textAlign: "center",
-                                minWidth: "70px",
-                              }}
+                              style={{ textAlign: "center", minWidth: "70px" }}
                             >
                               <IonBadge
                                 color={countdownColor}
@@ -1139,39 +1098,55 @@ export default function HomePage({ history }: HomePageProps) {
                                 TIME LEFT
                               </div>
                             </div>
-                          </div>
+                          )}
+                          {isExpiredPass && (
+                            <div
+                              style={{ textAlign: "center", minWidth: "70px" }}
+                            >
+                              <IonBadge
+                                color="danger"
+                                style={{
+                                  fontSize: "13px",
+                                  fontWeight: 800,
+                                  padding: "6px 10px",
+                                  borderRadius: "8px",
+                                  minWidth: "70px",
+                                }}
+                              >
+                                EXPIRED
+                              </IonBadge>
+                            </div>
+                          )}
                         </div>
-                      </IonItem>
+                      </div>
 
                       <IonItemOptions side="end">
-                        <IonItemOption
-                          color="danger"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            cancelVisitorPass(pass.id);
-                          }}
-                          style={{
-                            padding: "0 20px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          <IonIcon icon={trashOutline} slot="start" />
-                          Cancel
-                        </IonItemOption>
-                        <IonItemOption
-                          color="primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openPassViewer(pass);
-                          }}
-                          style={{
-                            padding: "0 20px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          <IonIcon icon={eyeOutline} slot="start" />
-                          View
-                        </IonItemOption>
+                        {pass.status === "active" && !isExpiredPass && (
+                          <>
+                            <IonItemOption
+                              color="danger"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                cancelVisitorPass(pass.id);
+                              }}
+                              style={{ padding: "0 20px", fontWeight: 600 }}
+                            >
+                              <IonIcon icon={trashOutline} slot="start" />
+                              Cancel
+                            </IonItemOption>
+                            <IonItemOption
+                              color="primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPassViewer(pass);
+                              }}
+                              style={{ padding: "0 20px", fontWeight: 600 }}
+                            >
+                              <IonIcon icon={eyeOutline} slot="start" />
+                              View
+                            </IonItemOption>
+                          </>
+                        )}
                       </IonItemOptions>
                     </IonItemSliding>
                   );
@@ -1209,7 +1184,6 @@ export default function HomePage({ history }: HomePageProps) {
             )}
           </div>
 
-          {/* Upcoming Bookings Section */}
           <div style={{ marginBottom: "32px" }}>
             <div
               style={{
@@ -1220,11 +1194,7 @@ export default function HomePage({ history }: HomePageProps) {
               }}
             >
               <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
               >
                 <div
                   style={{
@@ -1232,11 +1202,11 @@ export default function HomePage({ history }: HomePageProps) {
                     height: "32px",
                     borderRadius: "8px",
                     background:
-                      "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                      "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+                    color: "#1f2937",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "white",
                   }}
                 >
                   <IonIcon
@@ -1305,7 +1275,6 @@ export default function HomePage({ history }: HomePageProps) {
                                 : "-"}{" "}
                               • {booking.slot}
                             </div>
-                            {/* Add status badge */}
                             {booking.status && (
                               <div style={{ marginTop: "4px" }}>
                                 <IonBadge
@@ -1370,7 +1339,6 @@ export default function HomePage({ history }: HomePageProps) {
             )}
           </div>
 
-          {/* Recent Complaints Section */}
           <div style={{ marginBottom: "40px" }}>
             <div
               style={{
@@ -1381,11 +1349,7 @@ export default function HomePage({ history }: HomePageProps) {
               }}
             >
               <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
               >
                 <div
                   style={{
@@ -1393,11 +1357,11 @@ export default function HomePage({ history }: HomePageProps) {
                     height: "32px",
                     borderRadius: "8px",
                     background:
-                      "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+                      "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+                    color: "#1f2937",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "white",
                   }}
                 >
                   <IonIcon
@@ -1421,85 +1385,177 @@ export default function HomePage({ history }: HomePageProps) {
 
             {complaints.length > 0 ? (
               <div>
-                {complaints.slice(0, 2).map((c) => (
-                  <div key={c.id} style={itemStyle}>
-                    <div style={{ padding: "16px" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "12px",
-                          alignItems: "flex-start",
-                        }}
-                      >
+                {complaints.slice(0, 5).map((c) => {
+                  // Get status color
+                  const getComplaintStatusColor = (status: string) => {
+                    switch (status) {
+                      case "submitted":
+                        return "warning";
+                      case "in_progress":
+                        return "primary";
+                      case "resolved":
+                        return "success";
+                      case "rejected":
+                        return "danger";
+                      default:
+                        return "medium";
+                    }
+                  };
+
+                  const getComplaintStatusText = (status: string) => {
+                    switch (status) {
+                      case "submitted":
+                        return "SUBMITTED";
+                      case "in_progress":
+                        return "IN PROGRESS";
+                      case "resolved":
+                        return "RESOLVED";
+                      case "rejected":
+                        return "REJECTED";
+                      default:
+                        return status.toUpperCase();
+                    }
+                  };
+
+                  return (
+                    <div key={c.id} style={itemStyle}>
+                      <div style={{ padding: "16px" }}>
                         <div
                           style={{
-                            ...avatarStyle,
-                            background: "rgba(79, 172, 254, 0.1)",
-                            width: "36px",
-                            height: "36px",
+                            display: "flex",
+                            gap: "12px",
+                            alignItems: "flex-start",
                           }}
                         >
-                          <IonIcon
-                            icon={alertCircleOutline}
-                            style={{ color: "#4facfe" }}
-                          />
-                        </div>
-                        <div style={{ flex: 1 }}>
                           <div
                             style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "flex-start",
-                              marginBottom: "4px",
+                              ...avatarStyle,
+                              background: "rgba(79, 172, 254, 0.1)",
+                              width: "36px",
+                              height: "36px",
                             }}
                           >
-                            <div style={{ fontWeight: 700, color: "#1f2937" }}>
-                              {c.type}
-                            </div>
-                            <IonChip
-                              color="success"
+                            <IonIcon
+                              icon={alertCircleOutline}
+                              style={{ color: "#4facfe" }}
+                            />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div
                               style={{
-                                fontSize: "10px",
-                                height: "20px",
-                                margin: 0,
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "flex-start",
+                                marginBottom: "4px",
                               }}
                             >
-                              Submitted
-                            </IonChip>
-                          </div>
-                          <div
-                            style={{
-                              color: "#6b7280",
-                              fontSize: "13px",
-                              lineHeight: 1.4,
-                              marginBottom: "8px",
-                            }}
-                          >
-                            {c.description}
-                          </div>
-                          <div
-                            style={{
-                              color: "#9ca3af",
-                              fontSize: "11px",
-                              fontWeight: 500,
-                            }}
-                          >
-                            {c.createdAt
-                              ? new Date(c.createdAt).toLocaleDateString(
+                              <div
+                                style={{ fontWeight: 700, color: "#1f2937" }}
+                              >
+                                {c.type}
+                              </div>
+                              <IonBadge
+                                color={getComplaintStatusColor(c.status)}
+                                style={{
+                                  fontSize: "10px",
+                                  height: "20px",
+                                  margin: 0,
+                                }}
+                              >
+                                {getComplaintStatusText(c.status)}
+                              </IonBadge>
+                            </div>
+                            <div
+                              style={{
+                                color: "#6b7280",
+                                fontSize: "13px",
+                                lineHeight: 1.4,
+                                marginBottom: "8px",
+                              }}
+                            >
+                              {c.description}
+                            </div>
+
+                            {/* Display Admin Response if exists */}
+                            {c.admin_response && (
+                              <div
+                                style={{
+                                  background: "#f0f9ff",
+                                  padding: "10px",
+                                  borderRadius: "8px",
+                                  marginBottom: "8px",
+                                  borderLeft: "3px solid #0ea5e9",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    fontWeight: 600,
+                                    color: "#0369a1",
+                                    fontSize: "12px",
+                                    marginBottom: "4px",
+                                  }}
+                                >
+                                  Admin Response:
+                                </div>
+                                <div
+                                  style={{ color: "#0c4a6e", fontSize: "12px" }}
+                                >
+                                  {c.admin_response}
+                                </div>
+                              </div>
+                            )}
+
+                            <div
+                              style={{
+                                color: "#9ca3af",
+                                fontSize: "11px",
+                                fontWeight: 500,
+                              }}
+                            >
+                              Submitted:{" "}
+                              {c.createdAt
+                                ? new Date(c.createdAt).toLocaleDateString(
+                                    "en-IN",
+                                    {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    }
+                                  )
+                                : "-"}
+                            </div>
+
+                            {/* Show resolution date if resolved */}
+                            {c.resolved_at && (
+                              <div
+                                style={{
+                                  color: "#10b981",
+                                  fontSize: "11px",
+                                  fontWeight: 500,
+                                  marginTop: "4px",
+                                }}
+                              >
+                                Resolved:{" "}
+                                {new Date(c.resolved_at).toLocaleDateString(
                                   "en-IN",
                                   {
                                     day: "numeric",
                                     month: "short",
                                     year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
                                   }
-                                )
-                              : "-"}
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div style={emptyStateStyle}>
@@ -1519,7 +1575,7 @@ export default function HomePage({ history }: HomePageProps) {
           </div>
         </div>
       </IonContent>
-      {/* Modals */}
+
       <VisitorPassModal
         isOpen={visitorPassModalOpen}
         onClose={() => setVisitorPassModalOpen(false)}
@@ -1542,25 +1598,25 @@ export default function HomePage({ history }: HomePageProps) {
         pass={selectedPass}
         onCancelPass={cancelVisitorPass}
       />
-      {/* Toast */}
+
       <IonToast
         isOpen={toast.show}
         message={toast.msg}
         duration={2000}
         position="top"
-        style={{ "--background": "#667eea", "--color": "white" }}
+        style={{
+          "--background": "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+          "--color": "#1f2937",
+        }}
         onDidDismiss={() => setToast({ show: false, msg: "" })}
       />
     </IonPage>
   );
 }
 
-/* ---------------- styles ---------------- */
 const cardStyle = {
   borderRadius: "20px",
   padding: "20px 16px",
-  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  boxShadow: "0 10px 40px rgba(0,0,0,0.08)",
   cursor: "pointer",
   transition: "all 0.3s ease",
   height: "100%",

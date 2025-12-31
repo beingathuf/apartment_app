@@ -36,7 +36,7 @@ const NoticesTab: React.FC<NoticesTabProps> = ({
           expand="block"
           onClick={onCreateNoticeClick}
           style={{
-            "--background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            "--background": "linear-gradient(135deg, #9eaadcff 0%, #8a73a0ff 100%)",
             "--border-radius": "12px",
             height: "48px",
             fontWeight: "600",

@@ -11,12 +11,7 @@ import {
   IonIcon,
   IonToast,
 } from "@ionic/react";
-import {
-  callOutline,
-  settingsOutline,
-  logOutOutline,
-  shieldCheckmarkOutline,
-} from "ionicons/icons";
+import { callOutline, settingsOutline, logOutOutline } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
 
 /**
@@ -49,11 +44,6 @@ export default function MorePage() {
     history.push("/login");
   }
 
-  const headerStyle = {
-    "--background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    "--color": "white",
-  };
-
   const itemStyle = {
     borderRadius: "14px",
     marginBottom: "14px",
@@ -69,21 +59,49 @@ export default function MorePage() {
 
   return (
     <IonPage>
-      <IonContent fullscreen>
-        {/* Header Section */}
-        <div
+      <IonHeader>
+        <IonToolbar
           style={{
-            padding: 16,
-            fontWeight: 900,
-            fontSize: 24,
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
+            "--background": "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+            "--color": "#1f2937",
+            "--min-height": "70px",
           }}
         >
-          Settings & More
-        </div>
-
+          <IonTitle
+            style={{
+              width: "100%",
+              textAlign: "center",
+              fontWeight: 700,
+              color: "#1f2937",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <IonIcon
+                icon={settingsOutline}
+                style={{ fontSize: "20px", color: "#1f2937" }}
+              />
+              Settings & More
+            </div>
+          </IonTitle>
+        </IonToolbar>
+      </IonHeader>
+      <IonContent
+        fullscreen
+        style={{
+          "--background": `linear-gradient(
+      180deg,
+      #f5f7ff 0%,
+      #f3f4f6 40%,
+      #f9fafb 100%)`,
+        }}
+      >
         <div style={{ padding: "16px", paddingBottom: "120px" }}>
           <IonList lines="none">
             {/* Settings */}

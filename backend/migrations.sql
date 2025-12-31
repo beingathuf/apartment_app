@@ -74,23 +74,20 @@ CREATE TABLE
     created_by INTEGER REFERENCES users (id)
   );
 
-CREATE TABLE
-  IF NOT EXISTS visitor_passes (
-    id SERIAL PRIMARY KEY,
-    building_id INTEGER REFERENCES buildings (id) ON DELETE CASCADE,
-    apartment_id INTEGER REFERENCES apartments (id) ON DELETE SET NULL,
-    code TEXT NOT NULL UNIQUE,
-    visitor_name TEXT,
-    qr_data TEXT,
-    created_by INTEGER REFERENCES users (id),
-    created_at TIMESTAMP
-    WITH
-      TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-      expires_at TIMESTAMP
-    WITH
-      TIME ZONE NOT NULL,
-      status TEXT DEFAULT 'active'
-  );
+CREATE TABLE IF NOT EXISTS visitor_passes (
+  id SERIAL PRIMARY KEY,
+  building_id INTEGER REFERENCES buildings (id) ON DELETE CASCADE,
+  apartment_id INTEGER REFERENCES apartments (id) ON DELETE SET NULL,
+  code TEXT NOT NULL UNIQUE,
+  visitor_name TEXT,
+  qr_data TEXT,
+  created_by INTEGER REFERENCES users (id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'verified', 'cancelled', 'expired')),
+  verified_at TIMESTAMP WITH TIME ZONE,
+  verified_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
 
 -- migrations.sql - UPDATED with simplified bookings
 -- Drop old tables if they exist

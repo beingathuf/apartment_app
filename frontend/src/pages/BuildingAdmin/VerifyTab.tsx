@@ -57,11 +57,11 @@ const VerifyTab: React.FC<VerifyTabProps> = ({
           </h2>
           <div
             style={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              background: "linear-gradient(135deg, #c9d6ff 0%, #eef2f7 50%, #e2e2e2 100%)",
               borderRadius: "12px",
               padding: "24px",
               marginBottom: "24px",
-              color: "white",
+              color: "black",
             }}
           >
             <div
@@ -97,12 +97,12 @@ const VerifyTab: React.FC<VerifyTabProps> = ({
 
             <IonItem
               style={{
-                "--background": "rgba(255,255,255,0.2)",
-                "--border-color": "rgba(255,255,255,0.3)",
+                "--background": "rgba(255, 255, 255, 0.5)",
+                "--border-color": "rgba(255, 255, 255, 0.5)",
                 marginTop: "16px",
               }}
             >
-              <IonLabel position="floating" style={{ color: "white" }}>
+              <IonLabel position="floating" style={{ color: "black" }}>
                 Enter Pass Code
               </IonLabel>
               <IonInput
@@ -110,8 +110,8 @@ const VerifyTab: React.FC<VerifyTabProps> = ({
                 onIonChange={(e) => onVerificationCodeChange(e.detail.value!)}
                 placeholder="e.g., ABC123"
                 style={{
-                  color: "white",
-                  "--placeholder-color": "rgba(255,255,255,0.6)",
+                  color: "black",
+                  "--placeholder-color": "#000000",
                 }}
                 clearInput
               />
@@ -124,7 +124,7 @@ const VerifyTab: React.FC<VerifyTabProps> = ({
                 disabled={busy || !verificationCode.trim()}
                 style={{
                   "--background": "white",
-                  "--color": "#667eea",
+                  "--color": "black",
                   "--border-radius": "10px",
                   height: "44px",
                   fontWeight: "600",
@@ -141,7 +141,7 @@ const VerifyTab: React.FC<VerifyTabProps> = ({
                 disabled={busy}
                 style={{
                   "--background": "rgba(255,255,255,0.2)",
-                  "--color": "white",
+                  "--color": "black",
                   "--border-radius": "10px",
                   height: "44px",
                   fontWeight: "600",

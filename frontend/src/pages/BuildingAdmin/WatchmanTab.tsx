@@ -145,7 +145,7 @@ const WatchmenTab: React.FC<WatchmenTabProps> = ({
                     !watchmanName.trim()
                   }
                   style={{
-                    "--background": "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+                    "--background": "linear-gradient(135deg, #9eaadcff 0%, #8a73a0ff 100%)",
                     "--border-radius": "10px",
                     marginTop: "16px",
                     height: "44px",

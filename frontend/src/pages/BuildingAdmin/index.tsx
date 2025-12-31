@@ -1,5 +1,5 @@
 // src/pages/BuildingAdmin/index.tsx
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
   IonPage,
   IonHeader,
@@ -11,19 +11,17 @@ import {
   IonIcon,
   IonAlert,
   IonToast,
-  IonFab,
-  IonFabButton,
   IonButtons,
-  IonPopover,
   IonList,
+  IonMenu,
   IonItem,
 } from "@ionic/react";
 import {
   homeOutline,
   logOutOutline,
-  cameraOutline,
   menuOutline,
   chevronForwardOutline,
+  closeOutline,
   personOutline,
   businessOutline,
   peopleOutline,
@@ -67,9 +65,7 @@ export default function BuildingAdmin() {
   );
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
 
-  // Menu toggle state
-  const [showMenuToggle, setShowMenuToggle] = useState(false);
-  const [menuToggleEvent, setMenuToggleEvent] = useState<any>(null);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   // Form states
   const [unitNumber, setUnitNumber] = useState("");
@@ -195,24 +191,24 @@ export default function BuildingAdmin() {
   ];
 
   // Function to handle menu toggle
-  const handleMenuToggle = (e: any) => {
-    setMenuToggleEvent(e);
-    setShowMenuToggle(true);
+  const handleMenuToggle = () => {
+    setShowDrawer(true);
   };
 
   // Function to handle menu item selection
   const handleMenuItemSelect = (tab: TabType) => {
     setActiveTab(tab);
-    setShowMenuToggle(false);
-    setMenuToggleEvent(null);
+    setShowDrawer(false);
   };
 
   // Function to handle logout from menu
   const handleLogoutFromMenu = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    history.push("/admin-login");
-    setShowMenuToggle(false);
+    setShowDrawer(false);
+    setTimeout(() => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      history.push("/admin-login");
+    }, 300);
   };
 
   // Function to show current active tab title
@@ -537,6 +533,7 @@ export default function BuildingAdmin() {
     }
   }
 
+  // Change this function in BuildingAdmin/index.tsx
   async function handleVerifyPass() {
     const bid = effectiveBuildingId;
     if (!bid) return showToast("No building selected", "warning");
@@ -545,7 +542,7 @@ export default function BuildingAdmin() {
 
     setBusy(true);
     try {
-      const res = await api.post(`/admin/buildings/${bid}/verify-pass`, {
+      const res = await api.post(`/buildings/${bid}/verify-pass`, {
         code: verificationCode.trim().toUpperCase(),
       });
 
@@ -672,27 +669,34 @@ export default function BuildingAdmin() {
       </IonHeader>
 
       {/* Menu Toggle Popover (contains all menu items including logout) */}
-      <IonPopover
-        isOpen={showMenuToggle}
-        event={menuToggleEvent}
-        onDidDismiss={() => setShowMenuToggle(false)}
-        className="menu-toggle-popover"
-      >
-        <IonContent>
-          <div className="menu-header">
-            <div className="user-info">
-              <IonIcon icon={personOutline} className="user-icon" />
-              <div className="user-details">
-                <h3 className="user-title">Building Administrator</h3>
-                <p className="user-subtitle">
-                  {effectiveBuildingId
-                    ? `Building ID: ${effectiveBuildingId}`
-                    : "Loading..."}
-                </p>
-              </div>
+      <div
+        className={`drawer-backdrop ${showDrawer ? "visible" : ""}`}
+        onClick={() => setShowDrawer(false)}
+      />
+
+      <div className={`sliding-drawer ${showDrawer ? "open" : ""}`}>
+        <div className="drawer-header">
+          <div className="user-info">
+            <IonIcon icon={personOutline} className="user-icon" />
+            <div className="user-details">
+              <h3 className="user-title">Building Administrator</h3>
+              <p className="user-subtitle">
+                {effectiveBuildingId
+                  ? `Building ID: ${effectiveBuildingId}`
+                  : "Loading..."}
+              </p>
             </div>
           </div>
+          <IonButton
+            onClick={() => setShowDrawer(false)}
+            className="drawer-close-button"
+            fill="clear"
+          >
+            <IonIcon icon={closeOutline} slot="icon-only" />
+          </IonButton>
+        </div>
 
+        <div className="drawer-content">
           <IonList lines="full" className="menu-list">
             <div className="menu-section">
               {menuItems.map((item) => (
@@ -756,8 +760,8 @@ export default function BuildingAdmin() {
               </IonItem>
             </div>
           </IonList>
-        </IonContent>
-      </IonPopover>
+        </div>
+      </div>
 
       <IonContent className="admin-content">
         {/* Modals */}

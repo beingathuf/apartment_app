@@ -76,7 +76,7 @@ export default function BottomNav() {
           display: flex;
           gap: 6px;
           padding: 10px;
-          background: rgba(255, 255, 255, 0.85);
+          background: rgba(245, 247, 255, 0.85);
           border-radius: 22px;
           backdrop-filter: blur(14px);
           box-shadow:
@@ -117,7 +117,7 @@ export default function BottomNav() {
 
         .nav-item ion-icon {
           font-size: 22px;
-          transition: transform 0.25s ease;
+          transition: transform 0.25s ease, color 0.25s ease;
         }
 
         .nav-item:active {
@@ -125,17 +125,21 @@ export default function BottomNav() {
         }
 
         /* =========================
-           ACTIVE STATE
+           ACTIVE STATE (GLASS + GLOW)
         ========================== */
         .nav-item.active {
-          color: #fff;
-          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: #1f2937;
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(14px);
           box-shadow:
-            0 6px 16px rgba(102, 126, 234, 0.35);
+            0 10px 26px rgba(79, 70, 229, 0.18),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8);
+          border: 1px solid rgba(201, 214, 255, 0.9);
         }
 
         .nav-item.active ion-icon {
-          transform: scale(1.12);
+          color: #4f46e5;
+          transform: scale(1.15);
         }
 
         /* =========================
@@ -143,8 +147,8 @@ export default function BottomNav() {
         ========================== */
         @media (hover: hover) {
           .nav-item:hover:not(.active) {
-            background: rgba(102, 126, 234, 0.08);
-            color: #667eea;
+            background: rgba(201, 214, 255, 0.45);
+            color: #4f46e5;
           }
         }
 

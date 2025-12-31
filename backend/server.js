@@ -14,7 +14,7 @@ const adminRoutes = require("./routes/admin.routes");
 const noticesRoutes = require("./routes/notices.routes");
 const bookingsRoutes = require("./routes/bookings.routes");
 const complaintsRoutes = require('./routes/complaints.routes');
-
+const watchmanRoutes = require("./routes/watchman.routes");
 
 const PORT = process.env.PORT || 3000;
 
@@ -88,27 +88,6 @@ async function start() {
       error: err.message || "Internal Server Error",
       stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     });
-  });
-
-  // FIXED: Cron job using UTC time
-  nodeCron.schedule("*/1 * * * *", async () => {
-    try {
-      const result = await query(
-        `DELETE FROM visitor_passes 
-         WHERE expires_at <= (NOW() AT TIME ZONE 'UTC')
-         AND status = 'active'
-         RETURNING id, code`
-      );
-
-      if (result.rowCount > 0) {
-        console.log(
-          `[CRON] Auto-deleted ${result.rowCount} expired passes:`,
-          result.rows.map((r) => r.code)
-        );
-      }
-    } catch (e) {
-      console.error("[CRON] Error deleting expired passes:", e);
-    }
   });
 
   const server = app.listen(PORT, () => {

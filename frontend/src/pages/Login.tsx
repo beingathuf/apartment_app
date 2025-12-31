@@ -91,8 +91,8 @@ const Login: React.FC = () => {
       <IonHeader>
         <IonToolbar
           style={{
-            "--background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            "--color": "white",
+            "--background": "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+            "--color": "#000000",
           }}
         >
           <IonTitle>
@@ -117,7 +117,12 @@ const Login: React.FC = () => {
         fullscreen
         className="ion-padding"
         style={{
-          "--background": "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+          "--background": `linear-gradient(
+      180deg,
+      #f5f7ff 0%,
+      #f3f4f6 40%,
+      #f9fafb 100%
+    )`,
         }}
       >
         <div
@@ -141,7 +146,8 @@ const Login: React.FC = () => {
           >
             <div
               style={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+
                 width: "60px",
                 height: "60px",
                 borderRadius: "50%",
@@ -154,7 +160,7 @@ const Login: React.FC = () => {
             >
               <IonIcon
                 icon={business}
-                style={{ fontSize: "28px", color: "white" }}
+                style={{ fontSize: "28px", color: "#1f2937" }}
               />
             </div>
 
@@ -165,7 +171,7 @@ const Login: React.FC = () => {
                   fontSize: "1.5rem",
                   fontWeight: "bold",
                   background:
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    "linear-gradient(135deg, #94a3ff 0%, #cbd5e1 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                 }}
@@ -281,17 +287,18 @@ const Login: React.FC = () => {
               <IonButton
                 expand="block"
                 onClick={handleLogin}
+                disabled={showLoading}
                 style={{
                   "--background":
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  "--border-radius": "8px",
-                  "--box-shadow": "0 4px 15px rgba(102, 126, 234, 0.4)",
+                    "linear-gradient(135deg, #b6c6ff 0%, #d1d5db 100%)",
+                  "--border-radius": "10px",
+                  "--box-shadow": "0 6px 18px rgba(80, 100, 180, 0.3)",
+                  color: "#000000",
                   height: "44px",
                   fontWeight: "600",
                   fontSize: "14px",
                   marginBottom: "1rem",
                 }}
-                disabled={showLoading}
               >
                 <IonIcon
                   icon={logIn}

@@ -208,14 +208,6 @@ export default function NoticeBoardPage() {
     return colors[priority.toLowerCase()] || "medium";
   };
 
-  const formatTimeAgo = (daysAgo: number) => {
-    if (daysAgo === 0) return "Today";
-    if (daysAgo === 1) return "Yesterday";
-    if (daysAgo < 7) return `${daysAgo} days ago`;
-    if (daysAgo < 30) return `${Math.floor(daysAgo / 7)} weeks ago`;
-    return `${Math.floor(daysAgo / 30)} months ago`;
-  };
-
   const handleNoticeClick = (notice: Notice) => {
     setSelectedNotice(notice);
     setShowNoticeDetail(true);
@@ -228,11 +220,33 @@ export default function NoticeBoardPage() {
           <IonToolbar
             style={{
               "--background":
-                "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              "--color": "white",
+                "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+              "--min-height": "70px",
             }}
           >
-            <IonTitle>Notice Board</IonTitle>
+            <IonTitle
+              style={{
+                textAlign: "center",
+                width: "100%",
+                fontWeight: 700,
+                color: "#1f2937",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <IonIcon
+                  icon={megaphoneOutline}
+                  style={{ fontSize: "20px", color: "#1f2937" }}
+                />
+                Notice Board
+              </div>
+            </IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent>
@@ -248,21 +262,39 @@ export default function NoticeBoardPage() {
       <IonHeader>
         <IonToolbar
           style={{
-            "--background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            "--color": "white",
+            "--background": "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+            "--min-height": "70px",
           }}
         >
-          <IonTitle>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <IonIcon icon={megaphoneOutline} style={{ fontSize: "20px" }} />
+          <IonTitle
+            style={{
+              width: "100%",
+              textAlign: "center",
+              fontWeight: 700,
+              color: "#1f2937",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <IonIcon
+                icon={megaphoneOutline}
+                style={{ fontSize: "20px", color: "#1f2937" }}
+              />
               Notice Board
             </div>
           </IonTitle>
+
           <IonButtons slot="end">
             <IonButton
               onClick={() => loadNotices()}
               fill="clear"
-              style={{ "--color": "white" }}
+              style={{ "--color": "#1f2937" }}
             >
               <IonIcon icon={refreshOutline} />
             </IonButton>
@@ -270,7 +302,16 @@ export default function NoticeBoardPage() {
         </IonToolbar>
       </IonHeader>
 
-      <IonContent fullscreen>
+      <IonContent
+        fullscreen
+        style={{
+          "--background": `linear-gradient(
+      180deg,
+      #f5f7ff 0%,
+      #f3f4f6 40%,
+      #f9fafb 100%)`,
+        }}
+      >
         <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
           <IonRefresherContent pullingIcon={chevronBackOutline} />
         </IonRefresher>
@@ -282,7 +323,7 @@ export default function NoticeBoardPage() {
               fontWeight: 900,
               fontSize: "28px",
               marginBottom: "20px",
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              background: "linear-gradient(135deg, #94a3ff 0%, #cbd5e1 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               lineHeight: 1.2,
@@ -494,36 +535,6 @@ export default function NoticeBoardPage() {
                           </div>
                         </div>
                       </div>
-
-                      <div style={{ textAlign: "right" }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            color: "#6b7280",
-                            fontSize: "12px",
-                            fontWeight: 500,
-                          }}
-                        >
-                          <IonIcon
-                            icon={timeOutline}
-                            style={{ fontSize: "14px" }}
-                          />
-                          <span>{formatTimeAgo(notice.days_ago)}</span>
-                        </div>
-                        {notice.created_by_name && (
-                          <div
-                            style={{
-                              fontSize: "11px",
-                              color: "#9ca3af",
-                              marginTop: "2px",
-                            }}
-                          >
-                            By {notice.created_by_name}
-                          </div>
-                        )}
-                      </div>
                     </div>
 
                     {/* Preview Body */}
@@ -555,7 +566,7 @@ export default function NoticeBoardPage() {
                         justifyContent: "flex-end",
                         gap: "4px",
                         marginTop: "12px",
-                        color: "#667eea",
+                        color: "#4f46e5",
                         fontSize: "12px",
                         fontWeight: 600,
                       }}
@@ -592,14 +603,14 @@ export default function NoticeBoardPage() {
           <IonToolbar
             style={{
               "--background":
-                "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              "--color": "white",
+                "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+              "--color": "#000000",
             }}
           >
             <IonButtons slot="start">
               <IonButton
                 onClick={() => setShowNoticeDetail(false)}
-                style={{ "--color": "white" }}
+                style={{ "--color": "black" }}
               >
                 <IonIcon icon={chevronBackOutline} />
                 Back
@@ -629,15 +640,12 @@ export default function NoticeBoardPage() {
                         width: "48px",
                         height: "48px",
                         borderRadius: "14px",
-                        background: `linear-gradient(135deg, var(--ion-color-${getCategoryColor(
-                          selectedNotice.category
-                        )}), var(--ion-color-${getCategoryColor(
-                          selectedNotice.category
-                        )}-shade))`,
+                        background:
+                          "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+                        color: "#000000",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "white",
                       }}
                     >
                       <IonIcon
@@ -685,43 +693,6 @@ export default function NoticeBoardPage() {
                         </IonBadge>
                       </IonCardSubtitle>
                     </div>
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      paddingTop: "16px",
-                      borderTop: "1px solid rgba(229, 231, 235, 0.5)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        color: "#6b7280",
-                        fontSize: "14px",
-                      }}
-                    >
-                      <IonIcon icon={timeOutline} />
-                      <span>
-                        Posted {formatTimeAgo(selectedNotice.days_ago)}
-                      </span>
-                    </div>
-
-                    {selectedNotice.created_by_name && (
-                      <div
-                        style={{
-                          fontSize: "14px",
-                          color: "#4b5563",
-                          fontWeight: 500,
-                        }}
-                      >
-                        By: {selectedNotice.created_by_name}
-                      </div>
-                    )}
                   </div>
                 </IonCardHeader>
 

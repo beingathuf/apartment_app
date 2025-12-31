@@ -101,7 +101,7 @@ const ResidentsTab: React.FC<ResidentsTabProps> = ({
                     "--border-color": "#e2e8f0",
                   }}
                 >
-                  <IonLabel position="floating">Resident Name (Optional)</IonLabel>
+                  <IonLabel position="floating">Resident Name</IonLabel>
                   <IonInput
                     value={residentName}
                     onIonChange={(e) => onResidentNameChange(e.detail.value!)}
@@ -159,8 +159,7 @@ const ResidentsTab: React.FC<ResidentsTabProps> = ({
                     !residentPassword.trim()
                   }
                   style={{
-                    "--background":
-                      "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                    "--background": "linear-gradient(135deg, #9eaadcff 0%, #8a73a0ff 100%)",
                     "--border-radius": "10px",
                     marginTop: "16px",
                     height: "44px",

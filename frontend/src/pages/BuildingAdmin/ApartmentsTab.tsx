@@ -75,7 +75,7 @@ const ApartmentsTab: React.FC<ApartmentsTabProps> = ({
                     "--border-color": "#e2e8f0",
                   }}
                 >
-                  <IonLabel position="floating">Owner Name (Optional)</IonLabel>
+                  <IonLabel position="floating">Owner Name</IonLabel>
                   <IonInput
                     value={ownerName}
                     onIonChange={(e) => onOwnerNameChange(e.detail.value!)}
@@ -92,8 +92,7 @@ const ApartmentsTab: React.FC<ApartmentsTabProps> = ({
                   onClick={onCreateApartment}
                   disabled={busy || !unitNumber.trim()}
                   style={{
-                    "--background":
-                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    "--background": "linear-gradient(135deg, #9eaadcff 0%, #8a73a0ff 100%)",
                     "--border-radius": "10px",
                     marginTop: "16px",
                     height: "44px",

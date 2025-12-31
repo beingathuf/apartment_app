@@ -155,12 +155,13 @@ export default function PaymentsPage() {
     }
   }
 
-  // styles (inline to match theme)
-  const headerStyle = {
-    "--background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    "--color": "white",
+  const sectionTitle = {
+    fontWeight: 900,
+    fontSize: 18,
+    marginBottom: 12,
+    color: "#1f2937",
   };
-  const sectionTitle = { fontWeight: 900, fontSize: 18, marginBottom: 12 };
+
   const cardStyle = {
     borderRadius: 14,
     padding: 12,
@@ -186,22 +187,51 @@ export default function PaymentsPage() {
 
   return (
     <IonPage>
-      <IonContent fullscreen>
-        <div style={{ padding: 16, paddingBottom: 120 }}>
-          <div
+      <IonHeader>
+        <IonToolbar
+          style={{
+            "--background": "linear-gradient(135deg, #c9d6ff 0%, #e2e2e2 100%)",
+            "--color": "#1f2937",
+            "--min-height": "70px",
+          }}
+        >
+          <IonTitle
             style={{
-              fontWeight: 900,
-              fontSize: 24,
-              marginBottom: 20,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
+              width: "100%",
+              textAlign: "center",
+              fontWeight: 700,
+              color: "#1f2937",
             }}
           >
-            Payments
-          </div>
-          <div style={sectionTitle}>Transactions</div>
-
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <IonIcon
+                icon={walletOutline}
+                style={{ fontSize: "20px", color: "#1f2937" }}
+              />
+              Payments
+            </div>
+          </IonTitle>
+        </IonToolbar>
+      </IonHeader>
+      <IonContent
+        fullscreen
+        style={{
+          "--background": `linear-gradient(
+      180deg,
+      #f5f7ff 0%,
+      #f3f4f6 40%,
+      #f9fafb 100%
+    )`,
+        }}
+      >
+        <div style={{ padding: 16, paddingBottom: 120 }}>
           <div style={cardStyle}>
             <div
               style={{
@@ -240,8 +270,10 @@ export default function PaymentsPage() {
                       slot="start"
                       checked={checked}
                       disabled={isPaid}
+                      color="medium"
                       onIonChange={(e) => toggleSelect(b.id, e.detail.checked)}
                     />
+
                     <IonLabel>
                       <div
                         style={{
@@ -301,8 +333,13 @@ export default function PaymentsPage() {
                 onClick={handlePay}
                 disabled={loading || total <= 0}
                 style={{
-                  "--background": "linear-gradient(135deg,#667eea,#ec4899)",
+                  "--background":
+                    "linear-gradient(135deg, #b6c6ffff 0%, #d1d5db 100%)",
+                  "--background-activated":
+                    "linear-gradient(135deg, #aab8f55d 0%, #c7cdd665 100%)",
                   "--border-radius": "10px",
+                  color: "#1f2937",
+                  fontWeight: 600,
                 }}
               >
                 {loading ? (

@@ -148,6 +148,7 @@ export default function Watchman() {
     setToast({ show: true, message, color });
   };
 
+  // In handleVerifyPass function, change the API endpoint:
   async function handleVerifyPass() {
     if (!effectiveBuildingId) {
       showToast("No building assigned", "warning");
@@ -161,8 +162,9 @@ export default function Watchman() {
 
     setBusy(true);
     try {
+      // Use the same endpoint as admin
       const res = await api.post(
-        `/watchman/buildings/${effectiveBuildingId}/verify-pass`,
+        `/buildings/${effectiveBuildingId}/verify-pass`,
         {
           code: verificationCode.trim().toUpperCase(),
         }
@@ -176,7 +178,7 @@ export default function Watchman() {
         // Clear input after successful verification
         setVerificationCode("");
       } else {
-        showToast("Invalid or expired pass", "danger");
+        showToast(resData?.message || "Invalid or expired pass", "danger");
       }
     } catch (err: any) {
       showToast(err.message || "Verification failed", "danger");
