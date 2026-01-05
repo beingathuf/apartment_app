@@ -658,7 +658,7 @@ export default function HomePage({ history }: HomePageProps) {
                   letterSpacing: "-0.5px",
                 }}
               >
-                🏠 ApartmentCare
+                🏠 Guardly
               </div>
               <div
                 style={{
@@ -668,7 +668,7 @@ export default function HomePage({ history }: HomePageProps) {
                   marginTop: "2px",
                 }}
               >
-                Secure Visitor Management
+                Secure Apartment Management
               </div>
             </div>
           </div>

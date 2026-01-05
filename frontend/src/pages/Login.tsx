@@ -107,7 +107,7 @@ const Login: React.FC = () => {
                 icon={business}
                 style={{ marginRight: "8px", fontSize: "20px" }}
               />
-              ApartmentCare
+              Guardly
             </div>
           </IonTitle>
         </IonToolbar>
