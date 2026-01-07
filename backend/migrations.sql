@@ -60,19 +60,68 @@ CREATE INDEX idx_notices_visible ON notices (visible);
 
 CREATE INDEX idx_notices_created_at ON notices (created_at DESC);
 
-CREATE TABLE
-  IF NOT EXISTS payments (
+-- First, create the apartment_maintenance table
+CREATE TABLE IF NOT EXISTS apartment_maintenance (
+    id SERIAL PRIMARY KEY,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    apartment_id INTEGER NOT NULL REFERENCES apartments(id) ON DELETE CASCADE,
+    monthly_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    effective_from DATE NOT NULL DEFAULT CURRENT_DATE,
+    effective_to DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(apartment_id, effective_from)
+);
+
+-- Then, create the extra_payments table
+CREATE TABLE IF NOT EXISTS extra_payments (
+    id SERIAL PRIMARY KEY,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    apartment_id INTEGER REFERENCES apartments(id) ON DELETE CASCADE,
+    bill_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    amount DECIMAL(10, 2) NOT NULL,
+    currency VARCHAR(10) DEFAULT 'INR',
+    due_date DATE NOT NULL,
+    is_recurring BOOLEAN DEFAULT FALSE,
+    recurrence_frequency VARCHAR(20) CHECK (recurrence_frequency IN ('monthly', 'quarterly', 'yearly')),
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'cancelled', 'completed')),
+    applied_to_all BOOLEAN DEFAULT FALSE,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE payments (
     id SERIAL PRIMARY KEY,
     building_id INTEGER REFERENCES buildings (id) ON DELETE CASCADE,
-    apartment_id INTEGER REFERENCES apartments (id),
+    apartment_id INTEGER REFERENCES apartments (id) ON DELETE SET NULL,
     bill_name TEXT NOT NULL,
-    amount INTEGER NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
     currency TEXT DEFAULT 'INR',
-    status TEXT DEFAULT 'unpaid',
+    status TEXT DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'paid', 'cancelled')),
     due_date DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by INTEGER REFERENCES users (id)
-  );
+    bill_type VARCHAR(20) DEFAULT 'maintenance' CHECK (bill_type IN ('maintenance', 'extra', 'other')),
+    apartment_maintenance_id INTEGER REFERENCES apartment_maintenance(id) ON DELETE SET NULL,
+    extra_payment_id INTEGER REFERENCES extra_payments(id) ON DELETE SET NULL,
+    created_by INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_apartment_maintenance_apartment_id ON apartment_maintenance(apartment_id);
+CREATE INDEX IF NOT EXISTS idx_apartment_maintenance_building_id ON apartment_maintenance(building_id);
+CREATE INDEX IF NOT EXISTS idx_extra_payments_building_id ON extra_payments(building_id);
+CREATE INDEX IF NOT EXISTS idx_extra_payments_apartment_id ON extra_payments(apartment_id);
+CREATE INDEX IF NOT EXISTS idx_payments_apartment_maintenance_id ON payments(apartment_maintenance_id);
+CREATE INDEX IF NOT EXISTS idx_payments_extra_payment_id ON payments(extra_payment_id);
+CREATE INDEX IF NOT EXISTS idx_payments_building_id ON payments(building_id);
+CREATE INDEX IF NOT EXISTS idx_payments_apartment_id ON payments(apartment_id);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+CREATE INDEX IF NOT EXISTS idx_payments_due_date ON payments(due_date);
 
 CREATE TABLE IF NOT EXISTS visitor_passes (
   id SERIAL PRIMARY KEY,
@@ -88,11 +137,6 @@ CREATE TABLE IF NOT EXISTS visitor_passes (
   verified_at TIMESTAMP WITH TIME ZONE,
   verified_by INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
-
--- migrations.sql - UPDATED with simplified bookings
--- Drop old tables if they exist
-DROP TABLE IF EXISTS booking_sessions CASCADE;
-DROP TABLE IF EXISTS bookings CASCADE;
 
 -- Create simplified amenities table (common for all buildings)
 CREATE TABLE IF NOT EXISTS amenities (

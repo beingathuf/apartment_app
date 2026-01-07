@@ -1,5 +1,5 @@
-// src/pages/Payments.jsx
-import React, { useMemo, useState } from "react";
+// src/pages/Payments.jsx - UPDATED
+import React, { useMemo, useState, useEffect } from "react";
 import {
   IonPage,
   IonHeader,
@@ -15,57 +15,92 @@ import {
   IonBadge,
   IonIcon,
   IonSpinner,
+  IonCard,
+  IonCardContent,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonNote,
 } from "@ionic/react";
-import { walletOutline } from "ionicons/icons";
-
-/**
- * Payments page
- * - Select bills to pay
- * - Shows total
- * - Mock "Pay" flow which marks selected bills as Paid
- *
- * Replace mock payment code with real integration when ready.
- */
+import {
+  walletOutline,
+  cashOutline,
+  calendarOutline,
+  checkmarkCircleOutline,
+} from "ionicons/icons";
+import api from "../api";
 
 export default function PaymentsPage() {
-  // sample bills (in production fetch from API)
-  const [bills, setBills] = useState([
-    {
-      id: 1,
-      name: "Maintenance — Oct",
-      amount: "₹5,200",
-      status: "Unpaid",
-      date: "10 Oct 2025",
-    },
-    {
-      id: 2,
-      name: "Water Bill",
-      amount: "₹1,250",
-      status: "Unpaid",
-      date: "24 Sep 2025",
-    },
-    {
-      id: 3,
-      name: "Parking Fee",
-      amount: "₹800",
-      status: "Paid",
-      date: "15 Sep 2025",
-    },
-  ]);
-
-  // selected bill ids
+  const [bills, setBills] = useState([]);
   const [selected, setSelected] = useState(() => new Set());
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: "" });
+  const [stats, setStats] = useState({
+    total: 0,
+    paid: 0,
+    unpaid: 0,
+    total_due: 0,
+    total_paid: 0,
+  });
 
-  // parse currency strings like "₹5,200" to number 5200
+  useEffect(() => {
+    loadPayments();
+  }, []);
+
+  const loadPayments = async () => {
+    try {
+      setLoading(true);
+
+      // Get building ID from user info
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const buildingId = user.buildingId || user.building_id;
+
+      if (!buildingId) {
+        setToast({ show: true, msg: "Could not determine building" });
+        return;
+      }
+
+      // Load payments
+      const paymentsRes = await api.get(`/buildings/${buildingId}/payments`);
+      const paymentsData = paymentsRes?.data || paymentsRes;
+
+      // Load stats
+      const statsRes = await api.get(`/buildings/${buildingId}/payments/stats`);
+      const statsData = statsRes?.data || statsRes;
+
+      // Format bills for display
+      const formattedBills = (paymentsData.payments || []).map((payment) => ({
+        id: payment.id,
+        name: payment.display_name || payment.bill_name,
+        amount: `₹${Number(payment.amount).toLocaleString("en-IN")}`,
+        amountRaw: payment.amount,
+        status: payment.status === "paid" ? "Paid" : "Unpaid",
+        date: new Date(payment.due_date).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }),
+        due_date: payment.due_date,
+        bill_type: payment.bill_type,
+        description: payment.extra_description || "",
+      }));
+
+      setBills(formattedBills);
+      setStats(statsData.stats || stats);
+    } catch (error) {
+      console.error("Failed to load payments:", error);
+      setToast({ show: true, msg: "Failed to load payments" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   function parseAmount(str) {
     if (!str) return 0;
     const digits = str.replace(/[^\d.-]/g, "");
     return Number(digits) || 0;
   }
 
-  // format number to INR
   const formatter = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
@@ -95,14 +130,12 @@ export default function PaymentsPage() {
     const unpaid = bills.filter((b) => b.status !== "Paid").map((b) => b.id);
     const allSelected = unpaid.every((id) => selected.has(id));
     if (allSelected) {
-      // unselect all unpaid
       setSelected((prev) => {
         const s = new Set(prev);
         unpaid.forEach((id) => s.delete(id));
         return s;
       });
     } else {
-      // select all unpaid
       setSelected((prev) => {
         const s = new Set(prev);
         unpaid.forEach((id) => s.add(id));
@@ -112,36 +145,27 @@ export default function PaymentsPage() {
   }
 
   async function handlePay() {
-    // guard
     const idsToPay = bills
       .filter((b) => selected.has(b.id) && b.status !== "Paid")
       .map((b) => b.id);
+
     if (idsToPay.length === 0) {
       setToast({ show: true, msg: "Select at least one unpaid bill to pay" });
       return;
     }
 
-    // mock payment flow
     setLoading(true);
     try {
-      // simulate network/payment delay
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      // Process each payment
+      for (const id of idsToPay) {
+        await api.post(`/payments/${id}/pay`);
+      }
 
-      // mark bills as Paid locally
-      const updated = bills.map((b) => {
-        if (idsToPay.includes(b.id)) {
-          return { ...b, status: "Paid" };
-        }
-        return b;
-      });
-      setBills(updated);
+      // Reload payments
+      await loadPayments();
 
-      // remove paid ids from selection
-      setSelected((prev) => {
-        const s = new Set(prev);
-        idsToPay.forEach((id) => s.delete(id));
-        return s;
-      });
+      // Clear selection
+      setSelected(new Set());
 
       setToast({
         show: true,
@@ -155,13 +179,6 @@ export default function PaymentsPage() {
     }
   }
 
-  const sectionTitle = {
-    fontWeight: 900,
-    fontSize: 18,
-    marginBottom: 12,
-    color: "#1f2937",
-  };
-
   const cardStyle = {
     borderRadius: 14,
     padding: 12,
@@ -169,20 +186,6 @@ export default function PaymentsPage() {
     boxShadow: "0 12px 30px rgba(2,6,23,0.04)",
     border: "1px solid rgba(17,24,39,0.04)",
     marginBottom: 14,
-  };
-  const payBarStyle = {
-    position: "sticky",
-    bottom: 12,
-    left: 16,
-    right: 16,
-    padding: 12,
-    borderRadius: 12,
-    background: "rgba(255,255,255,0.95)",
-    boxShadow: "0 10px 30px rgba(2,6,23,0.06)",
-    display: "flex",
-    gap: 12,
-    alignItems: "center",
-    justifyContent: "space-between",
   };
 
   return (
@@ -220,139 +223,332 @@ export default function PaymentsPage() {
           </IonTitle>
         </IonToolbar>
       </IonHeader>
+
       <IonContent
         fullscreen
         style={{
           "--background": `linear-gradient(
-      180deg,
-      #f5f7ff 0%,
-      #f3f4f6 40%,
-      #f9fafb 100%
-    )`,
+            180deg,
+            #f5f7ff 0%,
+            #f3f4f6 40%,
+            #f9fafb 100%
+          )`,
         }}
       >
         <div style={{ padding: 16, paddingBottom: 120 }}>
-          <div style={cardStyle}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 12,
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>Select bills to pay</div>
-              <div>
-                <IonButton size="small" fill="clear" onClick={toggleSelectAll}>
-                  {bills
-                    .filter((b) => b.status !== "Paid")
-                    .every((b) => selected.has(b.id))
-                    ? "Unselect all"
-                    : "Select all"}
-                </IonButton>
-              </div>
-            </div>
-
-            <IonList lines="none">
-              {bills.map((b) => {
-                const isPaid = b.status === "Paid";
-                const checked = selected.has(b.id);
-                return (
-                  <IonItem
-                    key={b.id}
-                    style={{
-                      borderRadius: 10,
-                      marginBottom: 10,
-                      background: "rgba(255,255,255,0.85)",
-                    }}
-                  >
-                    <IonCheckbox
-                      slot="start"
-                      checked={checked}
-                      disabled={isPaid}
-                      color="medium"
-                      onIonChange={(e) => toggleSelect(b.id, e.detail.checked)}
-                    />
-
-                    <IonLabel>
+          {/* Stats Summary */}
+          <IonCard style={cardStyle}>
+            <IonCardContent>
+              <IonGrid style={{ padding: 0 }}>
+                <IonRow>
+                  <IonCol size="6">
+                    <div style={{ textAlign: "center" }}>
                       <div
                         style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          gap: 12,
+                          fontSize: "12px",
+                          color: "#6b7280",
+                          marginBottom: "4px",
                         }}
                       >
-                        <div>
-                          <div style={{ fontWeight: 800 }}>{b.name}</div>
-                          <div style={{ color: "#6b7280", fontSize: 12 }}>
-                            {b.date}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <div style={{ fontWeight: 900 }}>{b.amount}</div>
-                          <div style={{ marginTop: 6 }}>
-                            <IonBadge color={isPaid ? "success" : "warning"}>
-                              {b.status}
-                            </IonBadge>
-                          </div>
-                        </div>
+                        Total Due
                       </div>
-                    </IonLabel>
-                  </IonItem>
-                );
-              })}
-            </IonList>
-          </div>
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          fontSize: "18px",
+                          color: "#dc2626",
+                        }}
+                      >
+                        {formatter.format(stats.total_due || 0)}
+                      </div>
+                    </div>
+                  </IonCol>
+                  <IonCol size="6">
+                    <div style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#6b7280",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        Total Paid
+                      </div>
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          fontSize: "18px",
+                          color: "#059669",
+                        }}
+                      >
+                        {formatter.format(stats.total_paid || 0)}
+                      </div>
+                    </div>
+                  </IonCol>
+                </IonRow>
+                <IonRow>
+                  <IonCol size="6">
+                    <div style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#6b7280",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        Unpaid Bills
+                      </div>
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          fontSize: "18px",
+                          color: "#d97706",
+                        }}
+                      >
+                        {stats.unpaid || 0}
+                      </div>
+                    </div>
+                  </IonCol>
+                  <IonCol size="6">
+                    <div style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#6b7280",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        Paid Bills
+                      </div>
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          fontSize: "18px",
+                          color: "#2563eb",
+                        }}
+                      >
+                        {stats.paid || 0}
+                      </div>
+                    </div>
+                  </IonCol>
+                </IonRow>
+              </IonGrid>
+            </IonCardContent>
+          </IonCard>
 
-          {/* quick summary card */}
-          <div style={cardStyle}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 700 }}>Selected total</div>
-                <div style={{ color: "#6b7280", fontSize: 13 }}>
-                  Pay only what you choose
-                </div>
-              </div>
-
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontWeight: 900, fontSize: 18 }}>
-                  {formatter.format(total)}
-                </div>
-              </div>
-            </div>
-            <div style={{ marginTop: 12 }}>
-              <IonButton
-                expand="block"
-                onClick={handlePay}
-                disabled={loading || total <= 0}
+          {/* Bill Selection */}
+          <IonCard style={cardStyle}>
+            <IonCardContent>
+              <div
                 style={{
-                  "--background":
-                    "linear-gradient(135deg, #b6c6ffff 0%, #d1d5db 100%)",
-                  "--background-activated":
-                    "linear-gradient(135deg, #aab8f55d 0%, #c7cdd665 100%)",
-                  "--border-radius": "10px",
-                  color: "#1f2937",
-                  fontWeight: 600,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 12,
                 }}
               >
-                {loading ? (
-                  <>
-                    <IonSpinner name="crescent" />
-                    &nbsp;&nbsp;Processing...
-                  </>
-                ) : (
-                  "Pay Selected"
-                )}
-              </IonButton>
-            </div>
-          </div>
+                <div style={{ fontWeight: 700 }}>Select bills to pay</div>
+                <div>
+                  <IonButton
+                    size="small"
+                    fill="clear"
+                    onClick={toggleSelectAll}
+                  >
+                    {bills
+                      .filter((b) => b.status !== "Paid")
+                      .every((b) => selected.has(b.id))
+                      ? "Unselect all"
+                      : "Select all"}
+                  </IonButton>
+                </div>
+              </div>
+
+              {loading ? (
+                <div style={{ textAlign: "center", padding: "20px" }}>
+                  <IonSpinner name="crescent" />
+                  <div style={{ marginTop: "12px", color: "#6b7280" }}>
+                    Loading bills...
+                  </div>
+                </div>
+              ) : bills.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "40px 20px",
+                    color: "#94a3b8",
+                  }}
+                >
+                  <IonIcon
+                    icon={checkmarkCircleOutline}
+                    style={{ fontSize: "48px", marginBottom: "16px" }}
+                  />
+                  <div style={{ fontWeight: 600 }}>No pending bills</div>
+                  <div style={{ fontSize: "14px", marginTop: "4px" }}>
+                    All your payments are up to date
+                  </div>
+                </div>
+              ) : (
+                <IonList lines="none">
+                  {bills.map((b) => {
+                    const isPaid = b.status === "Paid";
+                    const checked = selected.has(b.id);
+                    return (
+                      <IonItem
+                        key={b.id}
+                        style={{
+                          borderRadius: 10,
+                          marginBottom: 10,
+                          background: "rgba(255,255,255,0.85)",
+                        }}
+                      >
+                        <IonCheckbox
+                          slot="start"
+                          checked={checked}
+                          disabled={isPaid}
+                          color="medium"
+                          onIonChange={(e) =>
+                            toggleSelect(b.id, e.detail.checked)
+                          }
+                        />
+
+                        <IonLabel>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              gap: 12,
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 800 }}>{b.name}</div>
+                              {b.description && (
+                                <div
+                                  style={{
+                                    color: "#6b7280",
+                                    fontSize: 12,
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  {b.description}
+                                </div>
+                              )}
+                              <div
+                                style={{
+                                  color: "#6b7280",
+                                  fontSize: 12,
+                                  marginTop: 4,
+                                }}
+                              >
+                                <IonIcon
+                                  icon={calendarOutline}
+                                  style={{ fontSize: "12px", marginRight: 4 }}
+                                />
+                                Due: {b.date}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontWeight: 900 }}>{b.amount}</div>
+                              <div style={{ marginTop: 6 }}>
+                                <IonBadge
+                                  color={isPaid ? "success" : "warning"}
+                                >
+                                  {b.status}
+                                </IonBadge>
+                              </div>
+                            </div>
+                          </div>
+                        </IonLabel>
+                      </IonItem>
+                    );
+                  })}
+                </IonList>
+              )}
+            </IonCardContent>
+          </IonCard>
+
+          {/* Payment Summary */}
+          {bills.filter((b) => b.status !== "Paid").length > 0 && (
+            <IonCard style={cardStyle}>
+              <IonCardContent>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700 }}>Selected total</div>
+                    <div style={{ color: "#6b7280", fontSize: 13 }}>
+                      {selected.size} bill(s) selected
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 900, fontSize: 18 }}>
+                      {formatter.format(total)}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <IonButton
+                    expand="block"
+                    onClick={handlePay}
+                    disabled={loading || total <= 0}
+                    style={{
+                      "--background":
+                        "linear-gradient(135deg, #b6c6ffff 0%, #d1d5db 100%)",
+                      "--background-activated":
+                        "linear-gradient(135deg, #aab8f55d 0%, #c7cdd665 100%)",
+                      "--border-radius": "10px",
+                      color: "#1f2937",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {loading ? (
+                      <>
+                        <IonSpinner name="crescent" />
+                        &nbsp;&nbsp;Processing...
+                      </>
+                    ) : (
+                      "Pay Selected"
+                    )}
+                  </IonButton>
+                  <IonNote
+                    style={{
+                      display: "block",
+                      marginTop: "8px",
+                      fontSize: "11px",
+                      color: "#6b7280",
+                    }}
+                  >
+                    * Note: This is a simulation. Integrate with a payment
+                    gateway for real transactions.
+                  </IonNote>
+                </div>
+              </IonCardContent>
+            </IonCard>
+          )}
+
+          {/* Payment Information */}
+          <IonCard style={cardStyle}>
+            <IonCardContent>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>
+                Payment Information
+              </div>
+              <div style={{ color: "#6b7280", fontSize: 13 }}>
+                <p style={{ marginBottom: 8 }}>
+                  • Monthly maintenance is automatically generated on the 1st of
+                  every month
+                </p>
+                <p style={{ marginBottom: 8 }}>
+                  • Extra payments are added by your building administrator
+                </p>
+                <p>• Payments are due on the date specified for each bill</p>
+              </div>
+            </IonCardContent>
+          </IonCard>
         </div>
 
         <IonToast

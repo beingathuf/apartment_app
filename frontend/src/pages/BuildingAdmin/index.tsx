@@ -28,6 +28,8 @@ import {
   checkmarkCircleOutline,
   notificationsOutline,
   calendarOutline,
+  cashOutline,
+  refreshOutline,
   alertCircleOutline,
   qrCodeOutline,
   shieldOutline,
@@ -44,6 +46,8 @@ import AdminBookingsTab from "./AdminBookingsTab";
 import NoticeModal from "./NoticeModal";
 import ScannerModal from "./ScannerModal";
 import WatchmenTab from "./WatchmanTab";
+import ExtraPaymentsTab from "./ExtraPaymentsTab";
+import GeneratePaymentsTab from "./GeneratePaymentsTab";
 
 import {
   TabType,
@@ -75,6 +79,7 @@ export default function BuildingAdmin() {
   const [residentName, setResidentName] = useState("");
   const [selectedApartmentId, setSelectedApartmentId] = useState<string>("");
   const [verificationCode, setVerificationCode] = useState("");
+  const [extraPayments, setExtraPayments] = useState([]);
 
   // Notice states
   const [showNoticeModal, setShowNoticeModal] = useState(false);
@@ -133,6 +138,7 @@ export default function BuildingAdmin() {
     unreadNotices: 0,
     pendingBookings: 0,
     pendingComplaints: 0,
+    totalWatchmen: 0,
   });
 
   // Menu items with icons
@@ -187,6 +193,18 @@ export default function BuildingAdmin() {
       label: "Watchmen",
       icon: shieldOutline,
       description: "Manage building security",
+    },
+    {
+      value: "payments" as TabType,
+      label: "Payments",
+      icon: cashOutline,
+      description: "Manage maintenance and payments",
+    },
+    {
+      value: "generate-payments" as TabType,
+      label: "Generate Payments",
+      icon: refreshOutline,
+      description: "Generate monthly payments",
     },
   ];
 
@@ -815,6 +833,7 @@ export default function BuildingAdmin() {
                   onOwnerNameChange={setOwnerName}
                   onCreateApartment={handleCreateApartment}
                   onDeleteApartment={handleDeleteApartment}
+                  buildingId={effectiveBuildingId} // Add this line
                 />
               )}
 
@@ -869,7 +888,18 @@ export default function BuildingAdmin() {
               {activeTab === "complaints" && effectiveBuildingId && (
                 <ComplaintsTab buildingId={effectiveBuildingId} />
               )}
-
+              {activeTab === "payments" && effectiveBuildingId && (
+                <ExtraPaymentsTab
+                  buildingId={effectiveBuildingId}
+                  apartments={apartments}
+                />
+              )}
+              {activeTab === "generate-payments" && effectiveBuildingId && (
+                <GeneratePaymentsTab
+                  buildingId={effectiveBuildingId}
+                  apartments={apartments}
+                />
+              )}
               {activeTab === "watchmen" && (
                 <WatchmenTab
                   watchmen={watchmen}

@@ -13,8 +13,9 @@ const passesRoutes = require("./routes/passes.routes");
 const adminRoutes = require("./routes/admin.routes");
 const noticesRoutes = require("./routes/notices.routes");
 const bookingsRoutes = require("./routes/bookings.routes");
-const complaintsRoutes = require('./routes/complaints.routes');
+const complaintsRoutes = require("./routes/complaints.routes");
 const watchmanRoutes = require("./routes/watchman.routes");
+const paymentsRoutes = require("./routes/payments.routes");
 
 const PORT = process.env.PORT || 3000;
 
@@ -61,9 +62,10 @@ async function start() {
   // Mount API routes in correct order
   app.use("/api/auth", authRoutes);
   app.use("/api", passesRoutes);
-  app.use("/api", bookingsRoutes); // IMPORTANT: This must come before admin routes
+  app.use("/api", bookingsRoutes);
   app.use("/api", noticesRoutes);
-  app.use('/api', complaintsRoutes);
+  app.use("/api", complaintsRoutes);
+  app.use("/api", paymentsRoutes);
   app.use("/api/admin", adminRoutes);
 
   // generic 404 for /api/*
@@ -80,6 +82,21 @@ async function start() {
       ],
     });
   });
+
+  if (process.env.NODE_ENV !== "test") {
+    nodeCron.schedule("0 0 1 * *", async () => {
+      try {
+        console.log("Generating monthly maintenance payments...");
+        const buildingsRes = await query("SELECT id FROM buildings");
+        for (const building of buildingsRes.rows) {
+          await generateMonthlyMaintenance(building.id);
+        }
+        console.log("Monthly maintenance payments generated successfully");
+      } catch (err) {
+        console.error("Error generating monthly payments:", err);
+      }
+    });
+  }
 
   // error handler
   app.use((err, req, res, next) => {

@@ -78,6 +78,16 @@ export interface Booking {
   resident_phone: string;
   approved_by_name: string | null;
 }
+export interface Stats {
+  totalApartments: number;
+  totalResidents: number;
+  totalWatchmen: number;
+  activePassesCount: number;
+  verifiedToday: number;
+  unreadNotices: number;
+  pendingBookings: number;
+  pendingComplaints: number;
+}
 
 export interface Watchman {
   id: number;
@@ -90,17 +100,6 @@ export interface Watchman {
   last_login: string | null;
 }
 
-export interface Stats {
-  totalApartments: number;
-  totalResidents: number;
-  totalWatchmen: number;
-  activePassesCount: number;
-  verifiedToday: number;
-  unreadNotices: number;
-  pendingBookings: number;
-  pendingComplaints: number;
-}
-
 export interface ComplaintStats {
   total: number;
   submitted: number;
@@ -109,4 +108,5 @@ export interface ComplaintStats {
   rejected: number;
   today: number;
 }
-export type TabType = "dashboard" | "apartments" | "residents" | "verify" | "notices" | "bookings" | "complaints";
+
+export type TabType = "dashboard" | "apartments" | "residents" | "verify" | "notices" | "bookings" | "complaints" | "payments" | "watchmen" | "generate-payments";

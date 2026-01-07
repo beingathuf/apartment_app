@@ -37,10 +37,20 @@ import api from "../api";
 
 /* ---------------- helpers ---------------- */
 function isExpired(expiryISO: string | null): boolean {
-  if (!expiryISO) return false;
-  const now = new Date();
-  const expiry = new Date(expiryISO);
-  return expiry.getTime() <= now.getTime();
+  if (!expiryISO) return true;
+
+  try {
+    const now = new Date();
+    const expiry = new Date(expiryISO);
+
+    if (isNaN(expiry.getTime())) {
+      return true;
+    }
+
+    return expiry.getTime() <= now.getTime();
+  } catch {
+    return true;
+  }
 }
 
 function getTimeRemaining(expiryISO: string | null) {
@@ -604,10 +614,17 @@ export default function HomePage({ history }: HomePageProps) {
   });
 
   const activeVisitorPasses = visitorPasses.filter((p) => {
-    if (p.status === "verified") {
-      return true;
+    const expired = isExpired(p.expiresAt);
+
+    if (p.status === "cancelled") {
+      return false;
     }
-    return p.status === "active" && !isExpired(p.expiresAt);
+
+    if (expired) {
+      return false;
+    }
+
+    return p.status === "verified" || p.status === "active";
   });
 
   const getAmenityIcon = (amenityName: string) => {
@@ -977,6 +994,10 @@ export default function HomePage({ history }: HomePageProps) {
                   const timeLeft = formatCountdown(pass.expiresAt);
                   const isVerified = pass.status === "verified";
                   const isExpiredPass = isExpired(pass.expiresAt);
+
+                  if (isExpiredPass) {
+                    return null;
+                  }
 
                   return (
                     <IonItemSliding key={pass.id}>

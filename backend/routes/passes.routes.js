@@ -126,6 +126,7 @@ router.post(
 );
 
 // List active passes (building) - Only non-expired passes
+// backend/routes/passes.routes.js - Updated GET endpoint
 router.get(
   "/buildings/:buildingId/visitor-passes",
   authMiddleware,
@@ -140,9 +141,47 @@ router.get(
         return res.status(403).json({ error: "forbidden" });
       }
 
-      // Get ALL passes for the building (including verified and active non-expired)
-      const r = await db.query(
-        `SELECT 
+      // Build query based on user role
+      let queryStr, params;
+      
+      if (req.user.role === "resident") {
+        // For residents: only show their own active/verified passes that are not expired
+        queryStr = `SELECT 
+          vp.*,
+          u.name as resident_name,
+          u.phone as resident_phone,
+          a.unit_number
+         FROM visitor_passes vp
+         LEFT JOIN users u ON vp.created_by = u.id
+         LEFT JOIN apartments a ON vp.apartment_id = a.id
+         WHERE vp.building_id = $1
+           AND vp.created_by = $2
+           AND vp.status IN ('active', 'verified')
+           AND (vp.expires_at IS NULL OR vp.expires_at > NOW() AT TIME ZONE 'UTC')
+         ORDER BY vp.created_at DESC`;
+        params = [buildingId, req.user.id];
+      } else if (req.user.role === "building_admin" || req.user.role === "super_admin") {
+        // For admins: show all active/verified passes (even expired) for the building
+        queryStr = `SELECT 
+          vp.*,
+          u.name as resident_name,
+          u.phone as resident_phone,
+          a.unit_number
+         FROM visitor_passes vp
+         LEFT JOIN users u ON vp.created_by = u.id
+         LEFT JOIN apartments a ON vp.apartment_id = a.id
+         WHERE vp.building_id = $1
+           AND vp.status IN ('active', 'verified', 'expired', 'cancelled')
+         ORDER BY 
+           CASE 
+             WHEN vp.status IN ('active', 'verified') AND (vp.expires_at IS NULL OR vp.expires_at > NOW() AT TIME ZONE 'UTC') THEN 1
+             ELSE 2
+           END,
+           vp.created_at DESC`;
+        params = [buildingId];
+      } else if (req.user.role === "watchman") {
+        // For watchmen: show active/verified passes that are not expired
+        queryStr = `SELECT 
           vp.*,
           u.name as resident_name,
           u.phone as resident_phone,
@@ -152,9 +191,27 @@ router.get(
          LEFT JOIN apartments a ON vp.apartment_id = a.id
          WHERE vp.building_id = $1
            AND vp.status IN ('active', 'verified')
-         ORDER BY vp.created_at DESC`,
-        [buildingId]
-      );
+           AND (vp.expires_at IS NULL OR vp.expires_at > NOW() AT TIME ZONE 'UTC')
+         ORDER BY vp.expires_at ASC, vp.created_at DESC`;
+        params = [buildingId];
+      } else {
+        // Default: show only non-expired active/verified passes
+        queryStr = `SELECT 
+          vp.*,
+          u.name as resident_name,
+          u.phone as resident_phone,
+          a.unit_number
+         FROM visitor_passes vp
+         LEFT JOIN users u ON vp.created_by = u.id
+         LEFT JOIN apartments a ON vp.apartment_id = a.id
+         WHERE vp.building_id = $1
+           AND vp.status IN ('active', 'verified')
+           AND (vp.expires_at IS NULL OR vp.expires_at > NOW() AT TIME ZONE 'UTC')
+         ORDER BY vp.created_at DESC`;
+        params = [buildingId];
+      }
+
+      const r = await db.query(queryStr, params);
 
       // Convert all timestamps to ISO strings for consistent frontend handling
       const passes = r.rows.map((pass) => {
@@ -177,9 +234,13 @@ router.get(
         // Convert verified_at to ISO string if exists
         if (convertedPass.verified_at instanceof Date) {
           convertedPass.verified_at = convertedPass.verified_at.toISOString();
+        } else if (convertedPass.verified_at) {
+          convertedPass.verified_at = new Date(
+            convertedPass.verified_at
+          ).toISOString();
         }
 
-        // Calculate time remaining in minutes
+        // Calculate time remaining in minutes and isExpired flag
         if (convertedPass.expires_at) {
           const now = new Date();
           const expiry = new Date(convertedPass.expires_at);
@@ -188,29 +249,33 @@ router.get(
             0,
             Math.floor(diff / (1000 * 60))
           );
-
-          // Also calculate isExpired flag for frontend
           convertedPass.isExpired = diff <= 0;
         } else {
           convertedPass.timeRemaining = 0;
           convertedPass.isExpired = true;
         }
 
-        // Add isActive flag
-        convertedPass.isActive =
-          convertedPass.status === "active" && !convertedPass.isExpired;
+        // Add isActive flag - true if status is active/verified and not expired
+        convertedPass.isActive = 
+          (convertedPass.status === 'active' || convertedPass.status === 'verified') && 
+          !convertedPass.isExpired;
+
+        // Add isVerified flag
+        convertedPass.isVerified = convertedPass.status === 'verified';
 
         return convertedPass;
       });
 
       console.log(
-        `GET /buildings/${buildingId}/visitor-passes: ${
+        `GET /buildings/${buildingId}/visitor-passes (${req.user.role}): ${
           passes.length
-        } passes (${
+        } total passes (${
           passes.filter((p) => p.status === "verified").length
         } verified, ${
-          passes.filter((p) => p.status === "active" && !p.isExpired).length
-        } active)`
+          passes.filter((p) => p.status === "active").length
+        } active, ${
+          passes.filter((p) => p.isExpired).length
+        } expired)`
       );
 
       return res.json({
@@ -222,7 +287,6 @@ router.get(
     }
   }
 );
-
 // Verify pass (used by both admin and watchman)
 router.post(
   "/buildings/:buildingId/verify-pass",
