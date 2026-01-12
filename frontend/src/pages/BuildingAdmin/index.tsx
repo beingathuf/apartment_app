@@ -786,8 +786,14 @@ export default function BuildingAdmin() {
         <ScannerModal
           isOpen={showScanner}
           onClose={() => setShowScanner(false)}
+          onScan={(result) => {
+            setVerificationCode(result);
+            // Optionally auto-verify after scan
+            setTimeout(() => {
+              handleVerifyPass();
+            }, 500);
+          }}
         />
-
         <NoticeModal
           isOpen={showNoticeModal}
           onClose={() => setShowNoticeModal(false)}
